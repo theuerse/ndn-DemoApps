@@ -15,6 +15,11 @@ ndn::FileConsumer::~FileConsumer()
 // register prefix on NFD
 void ndn::FileConsumer::run()
 {
+    getFile(this->interest_name);
+}
+
+void ndn::FileConsumer::getFile(string name){
+    this->buffer.clear();
     sendInterest(this->seq_nr);
     // processEvents will block until the requested data received or timeout occurs
     m_face.processEvents();
@@ -39,17 +44,28 @@ void ndn::FileConsumer::sendInterest(int seq_nr)
 // react to the reception of a reply from a Producer
 void ndn::FileConsumer::onData(const Interest& interest, const Data& data)
 {
-    cout << "data-packet received: " << endl;
+    // get sequence number
+    int seq_nr = interest.getName().at(-1).toSequenceNumber();
+    cout << "seqnr " << seq_nr << endl;
 
-    if(this->first_data_received){
-        // allocate space!!
-        this->first_data_received = false;
-        //this->
-    }
+    cout << "data-packet #" << seq_nr <<  " received: " << endl;
+
     const Block& block = data.getContent();
+
+    if(this->buffer.empty()){
+        // first data-packet arrived, allocate space
+        int buffer_size = boost::lexical_cast<int>(data.getFinalBlockId().toUri());
+        cout << "init buffer_size: " << buffer_size << endl;
+        this->buffer.reserve(buffer_size);
+    }
+    // Debug-output:
     std::cout.write((const char*)block.value(),block.value_size());
     cout << endl;
-    cout << "finalBlockId: " << data.getFinalBlockId() << endl;
+
+    //TODO: store received data in buffer
+   // this->buffer.insert(this->buffer.begin() + seq_nr, (char*)block.value());
+
+    //TODO: request more than that
 }
 
 // react on the request / Interest timing out

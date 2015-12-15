@@ -31,13 +31,14 @@ class FileConsumer : noncopyable
         void onData(const Interest& interest, const Data& data);
         void onTimeout(const Interest& interest);
         void sendInterest(int seq_nr);
+        void getFile(string name);
 
         Face m_face;
         string interest_name;
         int seq_nr;
         int interest_lifetime;
         bool first_data_received = true;
-        char* buffer;
+        vector<char*> buffer;
 };
 }   // end namespace ndn
 

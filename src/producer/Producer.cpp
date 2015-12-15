@@ -48,7 +48,7 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
     int buffer_size;
     Name interestName = interest.getName();
 
-    // get last sequence number
+    // get sequence number
     int seq_nr = interestName.at(-1).toSequenceNumber();
     interestName = interestName.getPrefix(-1); // remove seq-Nr
     cout << "Info: seq-nr: " << seq_nr << endl;
