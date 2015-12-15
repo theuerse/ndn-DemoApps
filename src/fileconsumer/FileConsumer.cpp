@@ -1,10 +1,8 @@
 #include "FileConsumer.h"
 // public methods
-ndn::FileConsumer::FileConsumer(string interest_name, int seq_nr, int interest_lifetime)
+ndn::FileConsumer::FileConsumer(int interest_lifetime)
 {
-    this->interest_name = interest_name;
     this->interest_lifetime = interest_lifetime;
-    this->seq_nr = seq_nr;
 }
 
 ndn::FileConsumer::~FileConsumer()
@@ -12,22 +10,17 @@ ndn::FileConsumer::~FileConsumer()
     cout << "Bye you cruel world" << endl;
 }
 
-// register prefix on NFD
-void ndn::FileConsumer::run()
-{
-    getFile(this->interest_name);
-}
-
 void ndn::FileConsumer::getFile(string name){
     this->buffer.clear();
-    sendInterest(this->seq_nr);
+    this->file_name = name;
+    sendInterest(0); // send first interest-packet
     // processEvents will block until the requested data received or timeout occurs
     m_face.processEvents();
 }
 
 void ndn::FileConsumer::sendInterest(int seq_nr)
 {
-     Interest interest(Name(this->interest_name).appendSequenceNumber(this->seq_nr));  // e.g. "/example/testApp/randomData"
+     Interest interest(Name(this->file_name).appendSequenceNumber(seq_nr));  // e.g. "/example/testApp/randomData"
     // appendSequenceNumber
     interest.setInterestLifetime(time::milliseconds(this->interest_lifetime));   // time::milliseconds(1000)
     interest.setMustBeFresh(true);
@@ -46,15 +39,16 @@ void ndn::FileConsumer::onData(const Interest& interest, const Data& data)
 {
     // get sequence number
     int seq_nr = interest.getName().at(-1).toSequenceNumber();
-    cout << "seqnr " << seq_nr << endl;
 
     cout << "data-packet #" << seq_nr <<  " received: " << endl;
 
     const Block& block = data.getContent();
 
     if(this->buffer.empty()){
-        // first data-packet arrived, allocate space
-        int buffer_size = boost::lexical_cast<int>(data.getFinalBlockId().toUri());
+         // first data-packet arrived, allocate space
+        this->finalBockId = boost::lexical_cast<int>(data.getFinalBlockId().toUri());
+        int buffer_size = this->finalBockId + 1;
+
         cout << "init buffer_size: " << buffer_size << endl;
         this->buffer.reserve(buffer_size);
     }
@@ -62,10 +56,30 @@ void ndn::FileConsumer::onData(const Interest& interest, const Data& data)
     std::cout.write((const char*)block.value(),block.value_size());
     cout << endl;
 
-    //TODO: store received data in buffer
-   // this->buffer.insert(this->buffer.begin() + seq_nr, (char*)block.value());
+    // store received data in buffer
+    string chunk((const char*)block.value(), block.value_size());
+    this->buffer.insert(this->buffer.begin() + seq_nr, chunk);
 
-    //TODO: request more than that
+    // request next one
+    if(seq_nr < this->finalBockId){
+        sendInterest(seq_nr + 1);
+    }else{
+        cout << "got all " << seq_nr + 1 << " parts" << endl;
+        flushBufferToFile("./out.txt"); // DEBUG fixture
+    }
+}
+
+void ndn::FileConsumer::flushBufferToFile(string path){
+    fstream outputStream(path, ios::out | ios::trunc); // open for write, drop prev content
+    outputStream.close(); // file exists now
+    outputStream.open(path, ios::out);
+
+    for(uint index = 0; index < this->buffer.size(); index++){
+        outputStream.write(this->buffer[index].c_str(), this->buffer[index].size());
+    }
+    outputStream.close();
+
+    this->buffer.clear();
 }
 
 // react on the request / Interest timing out
@@ -128,27 +142,13 @@ int main(int argc, char** argv)
     lifetime = vm["lifetime"].as<int>();
   }
 
-  // create new FileConsumer instance with given parameters
-  // get sequence number
-    string name = vm["name"].as<string>();
-    vector<string> parts;
-    boost::split(parts, name, boost::is_any_of("/"));
-    int seq_nr = 0;
-    try {
-        seq_nr = boost::lexical_cast<int>(parts[parts.size()-1]);
-        name = name.erase(name.find_last_of('/'));
-    } catch( boost::bad_lexical_cast const& ) {
-        cout << "Info: no seq_nr given, using default of 0" << endl;
-    }
-    cout << "Info: seq-nr: " << seq_nr << endl;
-
-    cout << "name: " << name << endl;
-    ndn::FileConsumer consumer(name,seq_nr,lifetime);
+    // create new FileConsumer instance with given parameters
+    ndn::FileConsumer consumer(lifetime);
 
   try
   {
     // start file consumer
-    consumer.run();
+    consumer.getFile(vm["name"].as<string>());
   }
   catch (const exception& e)
   {

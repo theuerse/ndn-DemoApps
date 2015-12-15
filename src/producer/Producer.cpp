@@ -95,7 +95,7 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
     result.success = true;
     result.buffer_size = buffer_size;
     result.buffer = buffer;
-    result.final_block_id = chunk_count;
+    result.final_block_id = chunk_count - 1;
     return result;
 }
 

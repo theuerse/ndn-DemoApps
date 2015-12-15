@@ -16,6 +16,9 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 
+// file ops
+#include<fstream>
+
 using namespace std;
 using namespace boost::program_options;
 
@@ -23,22 +26,21 @@ namespace ndn {
 class FileConsumer : noncopyable
 {
     public:
-        FileConsumer(string interest_name, int seq_nr, int interest_lifetime);
-        void run();
+        FileConsumer(int interest_lifetime);
+        void getFile(string name);
         virtual ~FileConsumer();
     protected:
     private:
         void onData(const Interest& interest, const Data& data);
         void onTimeout(const Interest& interest);
         void sendInterest(int seq_nr);
-        void getFile(string name);
+        void flushBufferToFile(string path);
 
         Face m_face;
-        string interest_name;
-        int seq_nr;
         int interest_lifetime;
-        bool first_data_received = true;
-        vector<char*> buffer;
+        vector<string> buffer;
+        int finalBockId;
+        string file_name;
 };
 }   // end namespace ndn
 
