@@ -1,4 +1,4 @@
-#include "FileConsumer.h"
+#include "FileConsumer.hpp"
 // public methods
 ndn::FileConsumer::FileConsumer(int interest_lifetime)
 {
