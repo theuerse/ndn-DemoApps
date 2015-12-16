@@ -7,7 +7,6 @@ ndn::FileConsumer::FileConsumer(int interest_lifetime)
 
 ndn::FileConsumer::~FileConsumer()
 {
-    cout << "Bye you cruel world" << endl;
 }
 
 void ndn::FileConsumer::getFile(string name){

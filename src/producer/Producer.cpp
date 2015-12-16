@@ -10,7 +10,6 @@ ndn::Producer::Producer(string prefix, string document_root, int data_size, int 
 
 ndn::Producer::~Producer()
 {
-    cout << "Bye you cruel world" << endl;
 }
 
 // register prefix on NFD
@@ -53,8 +52,15 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
     interestName = interestName.getPrefix(-1); // remove seq-Nr
     cout << "Info: seq-nr: " << seq_nr << endl;
 
+    fprintf(stderr, "interestName=%s\n",interestName.toUri ().c_str ());
+    fprintf(stderr, "prefix=%s\n",prefix.c_str ());
+    fprintf(stderr, "document_root=%s\n",document_root.c_str ());
+
+    std::string fname = interestName.toUri ();
+    fname = fname.substr (prefix.length ());
+
     // get remaining filename (ignore prefix) //TODO: support multiple level prefix?
-    string file_path = this->document_root + interestName.getSubName(1).toUri();
+    string file_path = this->document_root + fname;
     cout << "opening " << file_path << endl;
 
     // try to open file
@@ -70,12 +76,13 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
     // cope with request of chunk who doesn't exists
     int chunk_count = ceil((double)file_length / (double)this->data_size);
     cout << "chunk_count " << chunk_count << endl;
-    if(seq_nr > chunk_count-1){
+
+    if(seq_nr > chunk_count-1)
+    {
         cout << "out of bounds" << endl;
         result.success=false;
         return result;
     }
-
 
     inputStream.seekg(this->data_size * seq_nr); // seek
     int pos = inputStream.tellg();
@@ -87,14 +94,12 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
     inputStream.read (buffer,buffer_size);
     cout << "buffersize: " << buffer_size << endl;
     cout << buffer << endl;
-    //inputStream.read(data_size);
-    inputStream.close();
-    cout << "first: " << buffer[0] <<", last(" << buffer_size-1 << "): " << buffer[buffer_size -1] << endl;
+    inputStream.close();;
 
     cout << "done" << endl;
     result.success = true;
-    result.buffer_size = buffer_size;
-    result.buffer = buffer;
+    result.buffer = boost::asio::const_buffer(buffer, buffer_size);
+    //delete[] buffer;
     result.final_block_id = chunk_count - 1;
     return result;
 }
@@ -111,7 +116,8 @@ void ndn::Producer::onInterest(const InterestFilter& filter, const Interest& int
     cout << "Interest-name:" << interest.getName() << endl;
 
     file_chunk_t result = getFileContent(interest);
-    if(result.success){
+    if(result.success)
+    {
         dataName.appendVersion();  // add "version" component (current UNIX timestamp in milliseconds)
 
         //string content = generateContent(data_size); // fake data creation
@@ -121,19 +127,14 @@ void ndn::Producer::onInterest(const InterestFilter& filter, const Interest& int
         data->setName(dataName);
         data->setFreshnessPeriod(time::seconds(freshness_seconds));
         //data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.size());
-        data->setContent(reinterpret_cast<const uint8_t*>(result.buffer), result.buffer_size);
-        ndn::name::Component cmp = ndn::Name::Component(std::to_string(result.final_block_id));
-        cout << "finalBlockId: " << cmp << endl;
-        data->setFinalBlockId(cmp);
+        data->setContent(boost::asio::buffer_cast<const uint8_t*>(result.buffer), boost::asio::buffer_size(result.buffer));
+        data->setFinalBlockId(ndn::Name::Component(std::to_string(result.final_block_id)));
 
         // Sign Data packet with default identity
         m_keyChain.sign(*data);
 
         // Return Data packet
         m_face.put(*data);
-
-        // remove buffer
-        delete[] result.buffer; //TODO: memory leak?
     }
 }
 
@@ -178,8 +179,8 @@ int main(int argc, char** argv)
     cerr << "document-root  ... The directory open to requests (Interests). (Required)" << endl;
     cerr << "data-size      ... The size of the datapacket in bytes  (Required)" << endl;
     cerr << "freshness-time ... Freshness time of the content in seconds (Default 5 min)" << endl;
-    cerr << "usage-example: " << "./" << appName << " --prefix foo --document-root ./ --data-size 12" << endl;
-    cerr << "usage-example: " << "./" << appName << " --prefix foo --document-root ./ --data-size 12 --freshness-time 23" << endl;
+    cerr << "usage-example: " << "./" << appName << " --prefix foo --document-root ./ --data-size 4096" << endl;
+    cerr << "usage-example: " << "./" << appName << " --prefix foo --document-root ./ --data-size 4096 --freshness-time 300" << endl;
 
     cerr << "ERROR: " << e.what() << endl << endl;
     return -1;

@@ -16,6 +16,7 @@
 // using boost for file-system handling / cmd_options
 #include "boost/program_options.hpp"
 #include "boost/filesystem.hpp"
+#include "boost/asio.hpp"
 
 using namespace std;
 using namespace boost::program_options;
@@ -31,8 +32,7 @@ class Producer : noncopyable
     private:
         struct file_chunk_t {
             bool success;
-            char  *buffer;
-            int buffer_size;
+            boost::asio::const_buffer buffer;
             int final_block_id;
         };
 
