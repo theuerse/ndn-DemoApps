@@ -1,4 +1,5 @@
 #include "Producer.hpp"
+
 // public methods
 ndn::Producer::Producer(string prefix, string document_root, int data_size, int freshness_seconds)
 {
@@ -98,7 +99,7 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
 
     cout << "done" << endl;
     result.success = true;
-    result.buffer = boost::asio::const_buffer(buffer, buffer_size);
+    result.buffer = shared_ptr<itec::Buffer>( new itec::Buffer(buffer, buffer_size));
     //delete[] buffer;
     result.final_block_id = chunk_count - 1;
     return result;
@@ -127,7 +128,7 @@ void ndn::Producer::onInterest(const InterestFilter& filter, const Interest& int
         data->setName(dataName);
         data->setFreshnessPeriod(time::seconds(freshness_seconds));
         //data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.size());
-        data->setContent(boost::asio::buffer_cast<const uint8_t*>(result.buffer), boost::asio::buffer_size(result.buffer));
+        data->setContent((uint8_t* )result.buffer->getData(), result.buffer->getSize ());
         data->setFinalBlockId(ndn::Name::Component(std::to_string(result.final_block_id)));
 
         // Sign Data packet with default identity
