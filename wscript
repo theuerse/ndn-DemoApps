@@ -17,6 +17,7 @@ def configure(conf):
     conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
                    uselib_store='NDN_CXX', mandatory=True)
     conf.check(lib='dash', uselib="DASH", define_name='HAVE_DASH')
+    conf.check(lib='boost_thread', uselibt="BOOST_THREAD", define_name='HAVE_BOOST_THREAD')
 
 def build(bld):
     bld.program(
@@ -37,5 +38,5 @@ def build(bld):
         features='cxx',
         target='dashplayer',
         source='src/dashplayer/dashplayer.cpp src/dashplayer/filedownloader.cpp src/utils/buffer.cpp src/dashplayer/adaptationlogic.cpp src/dashplayer/multimediabuffer.cpp',
-        use='NDN_CXX DASH',
+        use='NDN_CXX DASH BOOST_THREAD',
         )
