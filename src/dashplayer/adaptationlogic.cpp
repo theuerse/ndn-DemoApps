@@ -1,6 +1,6 @@
 #include "adaptationlogic.hpp"
 
-using namespace ndn;
+using namespace player;
 
 AdaptationLogic::AdaptationLogic()
 {

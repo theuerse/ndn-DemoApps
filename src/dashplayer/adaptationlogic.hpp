@@ -10,7 +10,7 @@
 using namespace dash::mpd;
 
 
-namespace ndn
+namespace player
 {
 class AdaptationLogic
 {

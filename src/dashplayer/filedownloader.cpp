@@ -1,10 +1,12 @@
 #include "filedownloader.hpp"
 
-ndn::FileDownloader::FileDownloader()
+using namespace player;
+
+FileDownloader::FileDownloader()
 {
 }
 
-shared_ptr<itec::Buffer> ndn::FileDownloader::getFile(string name){
+shared_ptr<itec::Buffer> FileDownloader::getFile(string name){
   this->buffer.clear();
   this->file_name = name;
   sendInterest(0); // send first interest-packet
@@ -14,16 +16,16 @@ shared_ptr<itec::Buffer> ndn::FileDownloader::getFile(string name){
   return file;
 }
 
-void ndn::FileDownloader::sendInterest(int seq_nr)
+void FileDownloader::sendInterest(int seq_nr)
 {
-   Interest interest(Name(this->file_name).appendSequenceNumber(seq_nr));  // e.g. "/example/testApp/randomData"
+   Interest interest(Name(file_name).appendSequenceNumber(seq_nr));  // e.g. "/example/testApp/randomData"
   // appendSequenceNumber
   interest.setInterestLifetime(time::milliseconds(this->interest_lifetime));   // time::milliseconds(1000)
   interest.setMustBeFresh(true);
 
   m_face.expressInterest(interest,
-                         bind(&ndn::FileDownloader::onData, this,  _1, _2),
-                         bind(&ndn::FileDownloader::onTimeout, this, _1));
+                         bind(&FileDownloader::onData, this,  _1, _2),
+                         bind(&FileDownloader::onTimeout, this, _1));
 
   //cout << "Sending " << interest << endl;
 }
@@ -31,7 +33,7 @@ void ndn::FileDownloader::sendInterest(int seq_nr)
 
 // private methods
 // react to the reception of a reply from a Producer
-void ndn::FileDownloader::onData(const Interest& interest, const Data& data)
+void FileDownloader::onData(const Interest& interest, const Data& data)
 {
   // get sequence number
   int seq_nr = interest.getName().at(-1).toSequenceNumber();
@@ -77,12 +79,12 @@ void ndn::FileDownloader::onData(const Interest& interest, const Data& data)
 }
 
 // react on the request / Interest timing out
-void ndn::FileDownloader::onTimeout(const Interest& interest)
+void FileDownloader::onTimeout(const Interest& interest)
 {
   cout << "Timeout " << interest << endl;
 }
 
-void ndn::FileDownloader::onFileReceived ()
+void FileDownloader::onFileReceived ()
 {
   fprintf(stderr, "File received!\n");
 }

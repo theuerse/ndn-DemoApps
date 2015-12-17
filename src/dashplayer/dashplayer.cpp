@@ -1,6 +1,8 @@
 #include "dashplayer.hpp"
 
-ndn::DashPlayer::DashPlayer(std::string MPD, int interest_lifetime)
+using namespace player;
+
+DashPlayer::DashPlayer(std::string MPD, int interest_lifetime)
 {
     this->interest_lifetime = interest_lifetime;
     streaming_active = false;
@@ -9,11 +11,11 @@ ndn::DashPlayer::DashPlayer(std::string MPD, int interest_lifetime)
     base_url = "";
 }
 
-ndn::DashPlayer::~DashPlayer()
+DashPlayer::~DashPlayer()
 {
 }
 
-void ndn::DashPlayer::startStreaming ()
+void DashPlayer::startStreaming ()
 {
   //1fetch MPD and parse MPD
   std::string mpd_path("/tmp/video.mpd");
@@ -31,7 +33,7 @@ void ndn::DashPlayer::startStreaming ()
   exit(0);
 }
 
-bool ndn::DashPlayer::parseMPD(std::string mpd_path)
+bool DashPlayer::parseMPD(std::string mpd_path)
 {
   dash::IDASHManager *manager;
   manager = CreateDashManager();
@@ -88,7 +90,7 @@ bool ndn::DashPlayer::parseMPD(std::string mpd_path)
   return true;
 }
 
-void ndn::DashPlayer::writeFileToDisk(shared_ptr<itec::Buffer> buf, string file_path)
+void DashPlayer::writeFileToDisk(shared_ptr<itec::Buffer> buf, string file_path)
 {
   ofstream outputStream;
   outputStream.open(file_path, ios::out | ios::binary);
@@ -150,7 +152,7 @@ int main(int argc, char** argv)
   }
 
   // create new DashPlayer instance with given parameters
-  ndn::DashPlayer consumer(vm["name"].as<string>(), lifetime);
+  DashPlayer consumer(vm["name"].as<string>(), lifetime);
 
   try
   {

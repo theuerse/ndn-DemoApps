@@ -20,8 +20,9 @@
 using namespace std;
 using namespace dash::mpd;
 using namespace boost::program_options;
+using namespace ndn;
 
-namespace ndn {
+namespace player {
 class DashPlayer
 {
     public:

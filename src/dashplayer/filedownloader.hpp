@@ -16,8 +16,9 @@
 #include "../utils/buffer.hpp"
 
 using namespace std;
+using namespace ndn;
 
-namespace ndn {
+namespace player {
 class FileDownloader
 {
 public:
