@@ -35,3 +35,4 @@ build
 
 # waf folder
 .waf-1.8.2-a01aa13963437a19e5d8748cf2afd71b
+.waf-tools/default-compiler-flags.pyc
