@@ -36,6 +36,6 @@ def build(bld):
     bld.program(
         features='cxx',
         target='dashplayer',
-        source='src/dashplayer/dashplayer.cpp src/dashplayer/filedownloader.cpp src/utils/buffer.cpp src/dashplayer/adaptationlogic.cpp',
+        source='src/dashplayer/dashplayer.cpp src/dashplayer/filedownloader.cpp src/utils/buffer.cpp src/dashplayer/adaptationlogic.cpp src/dashplayer/multimediabuffer.cpp',
         use='NDN_CXX DASH',
         )
