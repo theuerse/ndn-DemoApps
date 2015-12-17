@@ -16,12 +16,13 @@ def configure(conf):
             '/opt/local/lib/pkgconfig'])
     conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
                    uselib_store='NDN_CXX', mandatory=True)
+    conf.check(lib='dash', uselib="DASH", define_name='HAVE_DASH')
 
 def build(bld):
     bld.program(
         features='cxx',
         target='producer',
-        source='src/producer/Producer.cpp',
+        source='src/producer/Producer.cpp src/utils/buffer.cpp',
         use='NDN_CXX',
         )
 
@@ -30,4 +31,11 @@ def build(bld):
         target='fileconsumer',
         source='src/fileconsumer/FileConsumer.cpp',
         use='NDN_CXX',
+        )
+
+    bld.program(
+        features='cxx',
+        target='dashplayer',
+        source='src/dashplayer/dashplayer.cpp src/dashplayer/filedownloader.cpp src/utils/buffer.cpp',
+        use='NDN_CXX dash',
         )
