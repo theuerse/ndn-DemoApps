@@ -26,11 +26,27 @@ void DashPlayer::startStreaming ()
     return;
 
   //2. start streaming (1. thread)
+  boost::thread downloadThread(&DashPlayer::scheduleDownloadNextSegment, this);
 
   //3. start consuming (2. thread)
+  boost::thread playbackThread(&DashPlayer::schedulePlayback, this);
 
   //wait until threads finished
+  downloadThread.join ();
+  playbackThread.join ();
+
   exit(0);
+}
+
+void DashPlayer::scheduleDownloadNextSegment ()
+{
+  fprintf(stderr, "downloading segment...\n");
+  sleep(3);
+}
+
+void DashPlayer::schedulePlayback ()
+{
+  fprintf(stderr, "doing playback\n");
 }
 
 bool DashPlayer::parseMPD(std::string mpd_path)

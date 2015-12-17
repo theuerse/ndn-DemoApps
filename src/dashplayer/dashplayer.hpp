@@ -5,8 +5,11 @@
 #define DASHPLAYER_H
 
 // using boost for file-system handling / cmd_options
-#include "boost/program_options.hpp"
-#include "boost/filesystem.hpp"
+#include "filedownloader.hpp"
+
+#include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/thread.hpp>
 
 // file ops
 #include <iostream>
@@ -14,8 +17,6 @@
 
 #include <libdash/libdash.h>
 #include <libdash/IMPD.h>
-
-#include "filedownloader.hpp"
 
 using namespace std;
 using namespace dash::mpd;
@@ -43,6 +44,9 @@ class DashPlayer
         std::map<std::string, IRepresentation*> availableRepresentations;
 
         FileDownloader downloader;
+
+        void scheduleDownloadNextSegment();
+        void schedulePlayback();
 };
 }   // end namespace ndn
 
