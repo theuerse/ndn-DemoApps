@@ -13,10 +13,12 @@
 #include <fstream>
 
 #include <libdash/libdash.h>
+#include <libdash/IMPD.h>
 
 #include "filedownloader.hpp"
 
 using namespace std;
+using namespace dash::mpd;
 using namespace boost::program_options;
 
 namespace ndn {
@@ -29,10 +31,15 @@ class DashPlayer
 
     private:
         void writeFileToDisk(shared_ptr<itec::Buffer> buf, string file_path);
+        bool parseMPD(std::string mpd_path);
 
         int interest_lifetime;
-        string MPD;
+        string mpd_url;
+        std::string base_url;
         bool streaming_active;
+
+        dash::mpd::IMPD *mpd;
+        std::map<std::string, IRepresentation*> availableRepresentations;
 
         FileDownloader downloader;
 };

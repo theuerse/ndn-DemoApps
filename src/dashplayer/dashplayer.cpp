@@ -1,10 +1,12 @@
 #include "dashplayer.hpp"
-// public methods
+
 ndn::DashPlayer::DashPlayer(std::string MPD, int interest_lifetime)
 {
     this->interest_lifetime = interest_lifetime;
     streaming_active = false;
-    this->MPD=MPD;
+    mpd_url=MPD;
+    mpd = NULL;
+    base_url = "";
 }
 
 ndn::DashPlayer::~DashPlayer()
@@ -13,9 +15,13 @@ ndn::DashPlayer::~DashPlayer()
 
 void ndn::DashPlayer::startStreaming ()
 {
-  //1fetch MPD
-  shared_ptr<itec::Buffer> mpd_buffer = downloader.getFile (MPD);
-  writeFileToDisk(mpd_buffer, "/tmp/video.mpd");
+  //1fetch MPD and parse MPD
+  std::string mpd_path("/tmp/video.mpd");
+  shared_ptr<itec::Buffer> mpd_data = downloader.getFile (mpd_url);
+  writeFileToDisk(mpd_data, mpd_path);
+
+  if(!parseMPD(mpd_path))
+    return;
 
   //2. start streaming (1. thread)
 
@@ -23,6 +29,63 @@ void ndn::DashPlayer::startStreaming ()
 
   //wait until threads finished
   exit(0);
+}
+
+bool ndn::DashPlayer::parseMPD(std::string mpd_path)
+{
+  dash::IDASHManager *manager;
+  manager = CreateDashManager();
+  mpd = manager->Open((char*)mpd_path.c_str ());
+
+  // We don't need the manager anymore...
+  manager->Delete();
+  manager = NULL;
+
+  if (mpd == NULL)
+  {
+    fprintf(stderr, "MPD - Parsing Error. Exiting..\n");
+    return false;
+  }
+
+  // we are assuming there is only 1 period, get the first one
+  IPeriod *currentPeriod = mpd->GetPeriods().at(0);
+
+  // get base URL (we take first always)
+  std::vector<dash::mpd::IBaseUrl*> baseUrls = mpd->GetBaseUrls ();
+  if(baseUrls.size () < 1)
+  {
+    fprintf(stderr, "No BaseUrl detected!\n");
+    return false;
+  }
+  base_url = baseUrls.at (0)->GetUrl();
+
+  // Get the adaptation sets, though we are only consider the first one
+  std::vector<IAdaptationSet *> allAdaptationSets = currentPeriod->GetAdaptationSets();
+
+  if (allAdaptationSets.size() < 1)
+  {
+    fprintf(stderr, "No adaptation sets found in MPD!\n");
+    return false;
+  }
+
+  IAdaptationSet* adaptationSet = allAdaptationSets.at(0);
+  std::vector<IRepresentation*> reps = adaptationSet->GetRepresentation();
+
+  if(reps.size () < 1)
+  {
+    fprintf(stderr, "No represntations found in MPD!\n");
+    return false;
+  }
+
+
+  availableRepresentations.clear();
+  for (IRepresentation* rep : reps)
+  {
+    std::string repId = rep->GetId();
+    availableRepresentations[repId] = rep;
+  }
+
+  return true;
 }
 
 void ndn::DashPlayer::writeFileToDisk(shared_ptr<itec::Buffer> buf, string file_path)

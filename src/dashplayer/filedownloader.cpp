@@ -25,7 +25,7 @@ void ndn::FileDownloader::sendInterest(int seq_nr)
                          bind(&ndn::FileDownloader::onData, this,  _1, _2),
                          bind(&ndn::FileDownloader::onTimeout, this, _1));
 
-  cout << "Sending " << interest << endl;
+  //cout << "Sending " << interest << endl;
 }
 
 
@@ -35,7 +35,7 @@ void ndn::FileDownloader::onData(const Interest& interest, const Data& data)
 {
   // get sequence number
   int seq_nr = interest.getName().at(-1).toSequenceNumber();
-  cout << "data-packet #" << seq_nr <<  " received: " << endl;
+  //cout << "data-packet #" << seq_nr <<  " received: " << endl;
 
   const Block& block = data.getContent();
 
@@ -45,13 +45,13 @@ void ndn::FileDownloader::onData(const Interest& interest, const Data& data)
     this->finalBockId = boost::lexical_cast<int>(data.getFinalBlockId().toUri());
     int buffer_size = this->finalBockId + 1;
 
-    cout << "init buffer_size: " << buffer_size << endl;
+    //cout << "init buffer_size: " << buffer_size << endl;
     this->buffer.reserve(buffer_size);
   }
 
   // Debug-output:
-  std::cout.write((const char*)block.value(),block.value_size());
-  cout << endl;
+  //std::cout.write((const char*)block.value(),block.value_size());
+  //cout << endl;
 
   // store received data in buffer
   shared_ptr<itec::Buffer> b(new itec::Buffer((char*)block.value(), block.value_size()));
@@ -64,7 +64,7 @@ void ndn::FileDownloader::onData(const Interest& interest, const Data& data)
   }
   else
   {
-    cout << "got all " << seq_nr + 1 << " parts" << endl;
+    //cout << "got all " << seq_nr + 1 << " parts" << endl;
 
     file = shared_ptr<itec::Buffer>(new itec::Buffer());
 
