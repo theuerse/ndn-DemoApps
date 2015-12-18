@@ -52,12 +52,15 @@ class DashPlayer
         dash::mpd::IMPD *mpd;
         std::map<std::string, IRepresentation*> availableRepresentations;
 
+        boost::posix_time::ptime stallStartTime;
+        bool isStalling;
+
         boost::shared_ptr<FileDownloader> downloader;
 
         string adaptionlogic_name;
-        dash::mpd::ISegmentURL* requestedSegmentURL;
-        const dash::mpd::IRepresentation* requestedRepresentation;
-        unsigned int requestedSegmentNr;
+
+        const dash::mpd::IRepresentation* last_requestedRepresentation;
+        unsigned int last_requestedSegmentNr;
 
         void scheduleDownloadNextSegment();
         void schedulePlayback();
@@ -65,6 +68,8 @@ class DashPlayer
         boost::shared_ptr<MultimediaBuffer> mbuffer;
         boost::shared_ptr<AdaptationLogic> alogic;
         int max_buffered_seconds;
+
+        bool hasDownloadedAllSegments;
 };
 }   // end namespace ndn
 

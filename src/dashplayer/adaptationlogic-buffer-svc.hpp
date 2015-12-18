@@ -4,8 +4,8 @@
 #include "adaptationlogic.hpp"
 #include <cmath>
 
-#define BUFFER_MIN_SIZE 16 // in seconds
-#define BUFFER_ALPHA 8 // in seconds
+#define BUFFER_MIN_SIZE 12 // in seconds
+#define BUFFER_ALPHA 6 // in seconds
 
 namespace player
 {

@@ -20,6 +20,12 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
     //factory - to be replaced
     alogic = AdaptationLogicFactory::Create(adaptionlogic_name, this); //TODO
     downloader = boost::shared_ptr<FileDownloader>(new FileDownloader(this->interest_lifetime ));
+
+    hasDownloadedAllSegments = false;
+    isStalling=false;
+
+    last_requestedRepresentation = NULL;
+    last_requestedSegmentNr = 0;
 }
 
 DashPlayer::~DashPlayer()
@@ -45,6 +51,8 @@ void DashPlayer::startStreaming ()
   if(!parseMPD(mpd_path))
     return;
 
+  alogic->SetAvailableRepresentations (availableRepresentations);
+
   //2. start streaming (1. thread)
   boost::thread downloadThread(&DashPlayer::scheduleDownloadNextSegment, this);
 
@@ -60,13 +68,92 @@ void DashPlayer::startStreaming ()
 
 void DashPlayer::scheduleDownloadNextSegment ()
 {
-  fprintf(stderr, "downloading segment...\n");
-  sleep(3);
+  const dash::mpd::IRepresentation* requestedRepresentation = NULL;
+  unsigned int requestedSegmentNr = 0;
+  dash::mpd::ISegmentURL* requestedSegmentURL = alogic->GetNextSegment(&requestedSegmentNr, &requestedRepresentation, &hasDownloadedAllSegments);
+
+  if(hasDownloadedAllSegments) // we got all segmetns, exit download thread
+    return;
+
+  if(requestedSegmentURL == NULL) // IDLE e.g. buffer is full
+  {
+    boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+    scheduleDownloadNextSegment();
+    return;
+  }
+
+  fprintf(stderr, "downloading segment = %s\n",(base_url+requestedSegmentURL->GetMediaURI()).c_str ());
+
+  last_requestedRepresentation = requestedRepresentation;
+  last_requestedSegmentNr = requestedSegmentNr;
+
+  shared_ptr<itec::Buffer> segmentData = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI());
+
+  if(segmentData != NULL)
+  {
+    mbuffer->addToBuffer (requestedSegmentNr, requestedRepresentation);
+  }
+
+  scheduleDownloadNextSegment();
 }
 
 void DashPlayer::schedulePlayback ()
 {
-  fprintf(stderr, "doing playback\n");
+
+  fprintf(stderr, "Schedule playback\n");
+
+  unsigned int buffer_level = mbuffer->getBufferedSeconds();
+
+  // did we finish streaming yet?
+  if (buffer_level == 0 && hasDownloadedAllSegments == true)
+     return; //finished streaming
+
+  player::MultimediaBuffer::BufferRepresentationEntry entry = mbuffer->consumeFromBuffer ();
+  double consumedSeconds = entry.segmentDuration;
+  if ( consumedSeconds > 0)
+  {
+    fprintf(stderr, "Consumed Segment %d, with Rep %s for %f seconds\n",entry.segmentNumber,entry.repId.c_str(), entry.segmentDuration);
+
+    if (isStalling)
+    {
+      boost::posix_time::ptime stallEndTime = boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time());
+      boost::posix_time::time_duration stallDuration;
+
+      // we had a freeze/stall, but we can continue playing now
+      stallDuration = (stallEndTime - stallStartTime);
+      isStalling = false;
+    }
+
+    /*m_playerTracer(this, entry.segmentNumber, entry.segmentDuration, entry.repId,
+                   entry.bitrate_bit_s, freezeTime, entry.depIds);*/
+  }
+  else
+  {
+    // could not consume, means buffer is empty
+    if ( isStalling == false)
+    {
+      isStalling = true;
+      stallStartTime = boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time());
+    }
+  }
+
+  if(consumedSeconds == 0.0) // we are stalling
+  {
+    //check for download abort
+    if(last_requestedRepresentation != NULL && !hasDownloadedAllSegments && last_requestedRepresentation->GetDependencyId ().size ()>0)
+    {
+      if(alogic->hasMinBufferLevel (last_requestedRepresentation))
+      {
+        //TODO abort download of current segment!
+      }
+    }
+    boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+  }
+  else
+  {
+    boost::this_thread::sleep(boost::posix_time::milliseconds(consumedSeconds*1000));
+  }
+  schedulePlayback();
 }
 
 bool DashPlayer::parseMPD(std::string mpd_path)
