@@ -27,16 +27,16 @@ def build(bld):
         use='NDN_CXX',
         )
 
-    bld.program(
-        features='cxx',
-        target='fileconsumer',
-        source='src/fileconsumer/FileConsumer.cpp',
-        use='NDN_CXX',
-        )
+    #bld.program(
+    #    features='cxx',
+    #    target='fileconsumer',
+    #    source='src/fileconsumer/FileConsumer.cpp',
+    #    use='NDN_CXX',
+    #    )
 
     bld.program(
         features='cxx',
         target='dashplayer',
-        source='src/dashplayer/dashplayer.cpp src/dashplayer/filedownloader.cpp src/utils/buffer.cpp src/dashplayer/adaptationlogic.cpp src/dashplayer/multimediabuffer.cpp',
+        source='src/dashplayer/dashplayer.cpp src/dashplayer/filedownloader.cpp src/utils/buffer.cpp src/dashplayer/adaptationlogic.cpp src/dashplayer/multimediabuffer.cpp src/dashplayer/adaptationlogic-buffer-svc.cpp',
         use='NDN_CXX DASH BOOST_THREAD',
         )

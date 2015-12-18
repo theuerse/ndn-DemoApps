@@ -18,6 +18,11 @@
 #include <libdash/libdash.h>
 #include <libdash/IMPD.h>
 
+#include "adaptationlogic.hpp"
+#include "adaptationlogic-buffer-svc.hpp"
+
+#include "multimediabuffer.hpp"
+
 using namespace std;
 using namespace dash::mpd;
 using namespace boost::program_options;
@@ -27,9 +32,13 @@ namespace player {
 class DashPlayer
 {
     public:
-        DashPlayer(string MPD, int interest_lifetime);
+        DashPlayer(string MPD, string adaptionlogic_name, int interest_lifetime);
         virtual ~DashPlayer();
         void startStreaming();
+
+        double GetBufferLevel(std::string repId = std::string("NULL"));
+        unsigned int nextSegmentNrToConsume();
+        unsigned int getHighestBufferedSegmentNr(std::string repId);
 
     private:
         void writeFileToDisk(shared_ptr<itec::Buffer> buf, string file_path);
@@ -43,10 +52,19 @@ class DashPlayer
         dash::mpd::IMPD *mpd;
         std::map<std::string, IRepresentation*> availableRepresentations;
 
-        FileDownloader downloader;
+        boost::shared_ptr<FileDownloader> downloader;
+
+        string adaptionlogic_name;
+        dash::mpd::ISegmentURL* requestedSegmentURL;
+        const dash::mpd::IRepresentation* requestedRepresentation;
+        unsigned int requestedSegmentNr;
 
         void scheduleDownloadNextSegment();
         void schedulePlayback();
+
+        boost::shared_ptr<MultimediaBuffer> mbuffer;
+        boost::shared_ptr<AdaptationLogic> alogic;
+        int max_buffered_seconds;
 };
 }   // end namespace ndn
 

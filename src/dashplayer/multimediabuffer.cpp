@@ -33,6 +33,7 @@ bool MultimediaBuffer::addToBuffer(unsigned int segmentNumber, const dash::mpd::
 
     BufferRepresentationEntryMap map = it->second;
 
+    mtx.lock ();
     for(std::vector<std::string>::const_iterator k = usedRepresentation->GetDependencyId ().begin ();
         k !=  usedRepresentation->GetDependencyId ().end (); k++)
     {
@@ -63,6 +64,7 @@ bool MultimediaBuffer::addToBuffer(unsigned int segmentNumber, const dash::mpd::
 
   buff[segmentNumber][usedRepresentation->GetId ()] = entry;
   toBufferSegmentNumber++;
+  mtx.unlock ();
   return true;
 }
 
@@ -148,9 +150,11 @@ MultimediaBuffer::BufferRepresentationEntry MultimediaBuffer::consumeFromBuffer(
     return entryConsumed;
   }
 
+  mtx.lock ();
   entryConsumed = getHighestConsumableRepresentation(toConsumeSegmentNumber);
   buff.erase (it);
   toConsumeSegmentNumber++;
+  mtx.unlock ();
   return entryConsumed;
 }
 

@@ -2,13 +2,24 @@
 
 using namespace player;
 
-DashPlayer::DashPlayer(std::string MPD, int interest_lifetime)
+DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_lifetime)
 {
+    this->adaptionlogic_name = adaptionlogic_name;
     this->interest_lifetime = interest_lifetime;
+
     streaming_active = false;
+
     mpd_url=MPD;
     mpd = NULL;
+
     base_url = "";
+
+    max_buffered_seconds=50;
+    mbuffer = boost::shared_ptr<MultimediaBuffer>(new MultimediaBuffer(max_buffered_seconds));
+
+    //factory - to be replaced
+    alogic = AdaptationLogicFactory::Create(adaptionlogic_name, this); //TODO
+    downloader = boost::shared_ptr<FileDownloader>(new FileDownloader(this->interest_lifetime ));
 }
 
 DashPlayer::~DashPlayer()
@@ -19,8 +30,17 @@ void DashPlayer::startStreaming ()
 {
   //1fetch MPD and parse MPD
   std::string mpd_path("/tmp/video.mpd");
-  shared_ptr<itec::Buffer> mpd_data = downloader.getFile (mpd_url);
+  shared_ptr<itec::Buffer> mpd_data = downloader->getFile (mpd_url);
+
+  if(mpd_data == NULL)
+  {
+    fprintf(stderr, "Error fetching MPD! Exiting..\n");
+    return;
+  }
+
   writeFileToDisk(mpd_data, mpd_path);
+
+  fprintf(stderr, "parsing...\n");
 
   if(!parseMPD(mpd_path))
     return;
@@ -124,6 +144,7 @@ int main(int argc, char** argv)
   options_description desc("Programm Options");
   desc.add_options ()
       ("name,p", value<string>()->required (), "The name of the interest to be sent (Required)")
+      ("adaptionlogic,a",value<string>()->required(), "The name of the adaption-logic to be used (Required)")
       ("lifetime,s", value<int>(), "The lifetime of the interest in milliseconds. (Default 1000ms)");
 
   positional_options_description positionalOptions;
@@ -141,9 +162,10 @@ int main(int argc, char** argv)
   {
     // user forgot to provide a required option
     cerr << "name           ... The name of the interest to be sent (Required)" << endl;
+    cerr << "adaptionlogic  ... The name of the adaption-logic to be used (Required, buffer or rate)" << endl;
     cerr << "lifetime       ... The lifetime of the interest in milliseconds. (Default 1000ms)" << endl;
-    cerr << "usage-example: " << "./" << appName << " --name /example/testApp/randomData" << endl;
-    cerr << "usage-example: " << "./" << appName << " --name /example/testApp/randomData --lifetime 1000" << endl;
+    cerr << "usage-example: " << "./" << appName << " --name /example/testApp/randomData --adaptionlogic buffer" << endl;
+    cerr << "usage-example: " << "./" << appName << " --name /example/testApp/randomData --adaptionlogic buffer --lifetime 1000" << endl;
 
     cerr << "ERROR: " << e.what() << endl << endl;
     return -1;
@@ -168,7 +190,7 @@ int main(int argc, char** argv)
   }
 
   // create new DashPlayer instance with given parameters
-  DashPlayer consumer(vm["name"].as<string>(), lifetime);
+  DashPlayer consumer(vm["name"].as<string>(),vm["adaptionlogic"].as<string>(), lifetime);
 
   try
   {
@@ -182,4 +204,22 @@ int main(int argc, char** argv)
   }
 
   return 0;
+}
+
+double DashPlayer::GetBufferLevel(std::string repId)
+{
+  if(repId.compare ("NULL") == 0)
+    return mbuffer->getBufferedSeconds ();
+  else
+    return mbuffer->getBufferedSeconds (repId);
+}
+
+unsigned int DashPlayer::nextSegmentNrToConsume ()
+{
+  return mbuffer->nextSegmentNrToBeConsumed ();
+}
+
+unsigned int DashPlayer::getHighestBufferedSegmentNr(std::string repId)
+{
+  return mbuffer->getHighestBufferedSegmentNr (repId);
 }

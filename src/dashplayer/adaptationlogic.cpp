@@ -1,9 +1,15 @@
 #include "adaptationlogic.hpp"
 
-using namespace player;
+#include "dashplayer.hpp"
 
-AdaptationLogic::AdaptationLogic()
+namespace player
 {
+
+ENSURE_ADAPTATION_LOGIC_INITIALIZED(AdaptationLogic)
+
+AdaptationLogic::AdaptationLogic(DashPlayer* dashplayer)
+{
+  this->dashplayer = dashplayer;
 }
 
 AdaptationLogic::~AdaptationLogic()
@@ -40,4 +46,5 @@ unsigned int AdaptationLogic::getTotalSegments()
 bool AdaptationLogic::hasMinBufferLevel(const dash::mpd::IRepresentation* rep)
 {
   return true;
+}
 }

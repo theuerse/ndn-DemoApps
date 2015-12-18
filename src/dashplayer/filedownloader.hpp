@@ -22,7 +22,7 @@ namespace player {
 class FileDownloader
 {
 public:
-  FileDownloader();
+  FileDownloader(int interest_lifetime);
 
   shared_ptr<itec::Buffer> getFile(string name);
 

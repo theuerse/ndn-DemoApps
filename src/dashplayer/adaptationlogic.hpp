@@ -1,6 +1,10 @@
 #ifndef DASH_ADAPTATION_LOGIC
 #define DASH_ADAPTATION_LOGIC
 
+#define ENSURE_ADAPTATION_LOGIC_REGISTERED(x) player::AdaptationLogicFactory::RegisterAdaptationLogic(x::GetName(), &(x::Create));
+#define ENSURE_ADAPTATION_LOGIC_INITIALIZED(x) x x::_staticLogic;
+#include "adaptation-logic-factory.hpp"
+
 #include <iostream>
 #include <string>
 #include <map>
@@ -9,18 +13,23 @@
 
 using namespace dash::mpd;
 
-
 namespace player
 {
+
 class AdaptationLogic
 {
 public:
-  AdaptationLogic();
+  AdaptationLogic(DashPlayer* dashplayer);
   ~AdaptationLogic();
+
+  static boost::shared_ptr<AdaptationLogic> Create(DashPlayer* mPlayer)
+  {
+    return boost::shared_ptr<AdaptationLogic>(new AdaptationLogic(mPlayer));
+  }
 
   virtual std::string GetName() const
   {
-    return "dash::player::AdaptationLogic";
+    return "player::AdaptationLogic";
   }
 
   virtual void SetAvailableRepresentations(std::map<std::string, IRepresentation *> availableRepresentations);
@@ -34,7 +43,14 @@ public:
 
 protected:
 
+  static AdaptationLogic _staticLogic;
+  DashPlayer *dashplayer;
   std::map<std::string, IRepresentation*> m_availableRepresentations;
+
+  AdaptationLogic()
+  {
+    ENSURE_ADAPTATION_LOGIC_REGISTERED(AdaptationLogic);
+  }
 };
 
 }

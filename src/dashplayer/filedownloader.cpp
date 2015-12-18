@@ -2,8 +2,9 @@
 
 using namespace player;
 
-FileDownloader::FileDownloader()
+FileDownloader::FileDownloader(int interest_lifetime)
 {
+  this->interest_lifetime = interest_lifetime;
 }
 
 shared_ptr<itec::Buffer> FileDownloader::getFile(string name){

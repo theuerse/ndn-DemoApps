@@ -5,6 +5,8 @@
 #include <vector>
 #include <libdash/libdash.h>
 
+#include <boost/thread.hpp>
+
 namespace player
 {
 class MultimediaBuffer
@@ -69,6 +71,8 @@ protected:
   >MBuffer;
 
   MBuffer buff;
+
+  boost::mutex mtx; // mutex to ensure that buffer stays consistent
 
   BufferRepresentationEntry getHighestConsumableRepresentation(int segmentNumber);
 
