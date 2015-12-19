@@ -49,7 +49,7 @@ void FileDownloader::onData(const Interest& interest, const Data& data)
     int buffer_size = this->finalBockId + 1;
 
     //cout << "init buffer_size: " << buffer_size << endl;
-    this->buffer.reserve(buffer_size);
+    this->buffer.resize(buffer_size,chunk());
   }
 
   // Debug-output:
@@ -58,31 +58,41 @@ void FileDownloader::onData(const Interest& interest, const Data& data)
 
   // store received data in buffer
   shared_ptr<itec::Buffer> b(new itec::Buffer((char*)block.value(), block.value_size()));
-  buffer.insert(buffer.begin() + seq_nr, b);
+  buffer[seq_nr].data = b;
+  buffer[seq_nr].state = chunk_state::received;
 
   // request next one
   if(seq_nr < this->finalBockId) //TODO
   {
       sendInterest(seq_nr + 1);
   }
-  else
-  {
-    //cout << "got all " << seq_nr + 1 << " parts" << endl;
 
+  if(allChunksReceived())
+  {
     file = shared_ptr<itec::Buffer>(new itec::Buffer());
 
-    for(vector<shared_ptr<itec::Buffer> >::iterator it = buffer.begin (); it != buffer.end (); it++)
+    for(vector<chunk>::iterator it = buffer.begin (); it != buffer.end (); it++)
     {
-       file->append((*it)->getData(),(*it)->getSize());
+       file->append((*it).data->getData(),(*it).data->getSize());
     }
     onFileReceived();
   }
+}
+
+bool FileDownloader::allChunksReceived(){
+    for(std::vector<chunk>::iterator it = buffer.begin(); it != buffer.end(); ++it) {
+        if((*it).state != chunk_state::received) return false;
+    }
+    return true;
 }
 
 // react on the request / Interest timing out
 void FileDownloader::onTimeout(const Interest& interest)
 {
   cout << "Timeout " << interest << endl;
+  // get sequence number
+  int seq_nr = interest.getName().at(-1).toSequenceNumber();
+  buffer[seq_nr].state = chunk_state::pending; // reset state to pending -> queue for re-request
 }
 
 void FileDownloader::onFileReceived ()

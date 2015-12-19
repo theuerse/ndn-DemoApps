@@ -27,14 +27,21 @@ public:
   shared_ptr<itec::Buffer> getFile(string name);
 
 protected:
+  enum class chunk_state {pending, requested, received};
+  struct chunk {
+      shared_ptr<itec::Buffer> data;
+      chunk_state state = chunk_state::pending;
+  };
+
   void onData(const Interest& interest, const Data& data);
   void onTimeout(const Interest& interest);
   void onFileReceived();
   void sendInterest(int seq_nr);
+  bool allChunksReceived();
 
   Face m_face;
   int interest_lifetime;
-  vector<shared_ptr<itec::Buffer> > buffer;
+  vector<chunk> buffer;
   int finalBockId;
   string file_name;
 
