@@ -15,6 +15,9 @@
 
 #include "../utils/buffer.hpp"
 
+#include <boost/thread.hpp>
+#include <boost/chrono.hpp>
+
 using namespace std;
 using namespace ndn;
 
@@ -25,8 +28,9 @@ public:
   FileDownloader(int interest_lifetime);
 
   shared_ptr<itec::Buffer> getFile(string name);
-
+  void cancel();
 protected:
+  enum class process_state {startup, running, cancelled};
   enum class chunk_state {pending, requested, received};
   struct chunk {
       shared_ptr<itec::Buffer> data;
@@ -36,7 +40,9 @@ protected:
   void onData(const Interest& interest, const Data& data);
   void onTimeout(const Interest& interest);
   void onFileReceived();
-  void sendInterest(int seq_nr);
+  void download();
+  void sendNextInterests(int max);
+  void expressInterest(int seq_nr);
   bool allChunksReceived();
 
   Face m_face;
@@ -44,6 +50,8 @@ protected:
   vector<chunk> buffer;
   int finalBockId;
   string file_name;
+  int bitrate;
+  process_state state;
 
   shared_ptr<itec::Buffer> file;
 };

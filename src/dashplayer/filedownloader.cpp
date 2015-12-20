@@ -9,15 +9,71 @@ FileDownloader::FileDownloader(int interest_lifetime)
 
 shared_ptr<itec::Buffer> FileDownloader::getFile(string name){
   this->buffer.clear();
+  this->state = process_state::startup;
+  //this->bitrate = ....  uebergeben!
+  this->file = shared_ptr<itec::Buffer>(new itec::Buffer());
   this->file_name = name;
-  sendInterest(0); // send first interest-packet
+
+  download(); // start downloading
+
   // processEvents will block until the requested data received or timeout occurs
   m_face.processEvents();
 
   return file;
 }
 
-void FileDownloader::sendInterest(int seq_nr)
+// (start) downloading the file
+void FileDownloader::download(){
+  this->buffer.resize(1,chunk()); // insert initial 10 entreis ??
+  while(!allChunksReceived())
+  {
+    // check if caller cancelled
+    if(this->state == process_state::cancelled)
+    {
+      m_face.shutdown(); // dangerous?
+      return; // cancelled, do not touch file (-buffer)
+    }
+
+    // send bitrate / interestsize? interest out
+    sendNextInterests(20);
+
+    // wait for a sec
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+  }
+
+  // all chunks / file has been downloaded
+  // unify buffers and return
+  for(vector<chunk>::iterator it = buffer.begin (); it != buffer.end (); it++)
+  {
+    file->append((*it).data->getData(),(*it).data->getSize());
+  }
+  onFileReceived();
+}
+
+// send next pending interest, returns success-indicator
+void FileDownloader::sendNextInterests(int max){
+  int expressed_interests = 0;
+  for(uint index = 0; index < buffer.size(); index++)
+  {
+    if(buffer[index].state == chunk_state::pending)
+    {
+      expressInterest(index);
+      expressed_interests++;
+      buffer[index].state = chunk_state::requested;
+      if(expressed_interests >= max)
+      {
+        cout << "sending batch" << endl;
+        return;
+      }
+    }
+  }
+  cout << "sending batch" << endl;
+
+  // bocking problematic, sendNextInterests in new thread?
+  m_face.processEvents(); // send out batch (async????)
+}
+
+void FileDownloader::expressInterest(int seq_nr)
 {
    Interest interest(Name(file_name).appendSequenceNumber(seq_nr));  // e.g. "/example/testApp/randomData"
   // appendSequenceNumber
@@ -28,7 +84,7 @@ void FileDownloader::sendInterest(int seq_nr)
                          bind(&FileDownloader::onData, this,  _1, _2),
                          bind(&FileDownloader::onTimeout, this, _1));
 
-  //cout << "Sending " << interest << endl;
+  cout << "Expressing interest #" << seq_nr << " " << interest << endl;
 }
 
 
@@ -36,20 +92,27 @@ void FileDownloader::sendInterest(int seq_nr)
 // react to the reception of a reply from a Producer
 void FileDownloader::onData(const Interest& interest, const Data& data)
 {
+  if(this->state == process_state::cancelled){
+      cout << "onData after cancel" << endl;
+      return;
+  }
+
   // get sequence number
   int seq_nr = interest.getName().at(-1).toSequenceNumber();
-  //cout << "data-packet #" << seq_nr <<  " received: " << endl;
+  cout << "data-packet #" << seq_nr <<  " received: " << endl;
 
   const Block& block = data.getContent();
 
-  if(this->buffer.empty())
+  if(this->state == process_state::startup)
   {
      // first data-packet arrived, allocate space
     this->finalBockId = boost::lexical_cast<int>(data.getFinalBlockId().toUri());
     int buffer_size = this->finalBockId + 1;
 
     //cout << "init buffer_size: " << buffer_size << endl;
+    this->buffer.resize(0); // allow for smaller buffersizes
     this->buffer.resize(buffer_size,chunk());
+    this->state = process_state::running;
   }
 
   // Debug-output:
@@ -60,25 +123,9 @@ void FileDownloader::onData(const Interest& interest, const Data& data)
   shared_ptr<itec::Buffer> b(new itec::Buffer((char*)block.value(), block.value_size()));
   buffer[seq_nr].data = b;
   buffer[seq_nr].state = chunk_state::received;
-
-  // request next one
-  if(seq_nr < this->finalBockId) //TODO
-  {
-      sendInterest(seq_nr + 1);
-  }
-
-  if(allChunksReceived())
-  {
-    file = shared_ptr<itec::Buffer>(new itec::Buffer());
-
-    for(vector<chunk>::iterator it = buffer.begin (); it != buffer.end (); it++)
-    {
-       file->append((*it).data->getData(),(*it).data->getSize());
-    }
-    onFileReceived();
-  }
 }
 
+// check if actually all parts have been downloaded
 bool FileDownloader::allChunksReceived(){
     for(std::vector<chunk>::iterator it = buffer.begin(); it != buffer.end(); ++it) {
         if((*it).state != chunk_state::received) return false;
@@ -89,10 +136,20 @@ bool FileDownloader::allChunksReceived(){
 // react on the request / Interest timing out
 void FileDownloader::onTimeout(const Interest& interest)
 {
+  if(this->state == process_state::cancelled){
+      cout << "onTimeout after cancel" << endl;
+      return;
+  }
   cout << "Timeout " << interest << endl;
   // get sequence number
   int seq_nr = interest.getName().at(-1).toSequenceNumber();
   buffer[seq_nr].state = chunk_state::pending; // reset state to pending -> queue for re-request
+}
+
+// cancel downloading, returned file will be empty
+void FileDownloader::cancel()
+{
+  this->state = process_state::cancelled;
 }
 
 void FileDownloader::onFileReceived ()
