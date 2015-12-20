@@ -15,8 +15,6 @@
 
 #include "../utils/buffer.hpp"
 
-#include <boost/thread.hpp>
-#include <boost/chrono.hpp>
 
 using namespace std;
 using namespace ndn;

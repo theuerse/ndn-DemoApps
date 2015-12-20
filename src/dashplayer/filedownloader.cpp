@@ -35,11 +35,12 @@ void FileDownloader::download(){
       return; // cancelled, do not touch file (-buffer)
     }
 
-    // send bitrate / interestsize? (e.g. 40) interests out
+    // send bitrate / interestsize? (e.g. 40) interests out //TODO: calculate
     sendNextInterests(40);
 
-    // wait for a sec
-    boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+    // spend exactly one second blocking / processing events
+    m_face.processEvents(time::milliseconds(1000),true);
+
   }while(!allChunksReceived());
 
   // all chunks / file has been downloaded
@@ -63,17 +64,14 @@ void FileDownloader::sendNextInterests(int max){
       buffer[index].state = chunk_state::requested;
       if(expressed_interests >= max)
       {
-          const std::time_t ctt = std::time(0);
-          cout << asctime(localtime(&ctt)) << "sending batch" << endl;
+        const std::time_t ctt = std::time(0);
+        cout << "sending batch at " << asctime(localtime(&ctt)) << endl;
         return;
       }
     }
   }
   const std::time_t ctt = std::time(0);
-  cout << asctime(localtime(&ctt)) << "sending batch" << endl;
-
-  m_face.processEvents(); // blocking?
-  //m_face.processEvents(time::milliseconds(-1),false); // just process events, not blocking here
+  cout << "sending batch at " << asctime(localtime(&ctt)) << endl;
 }
 
 void FileDownloader::expressInterest(int seq_nr)
