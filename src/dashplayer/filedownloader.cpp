@@ -24,7 +24,6 @@ shared_ptr<itec::Buffer> FileDownloader::getFile(string name){
 
 // (start) downloading the file
 void FileDownloader::download(){
-  boost::thread_group request_threads;
   this->buffer.resize(5,chunk()); // insert initial 5 entries (requested)
 
   do
@@ -36,15 +35,12 @@ void FileDownloader::download(){
       return; // cancelled, do not touch file (-buffer)
     }
 
-    // send bitrate / interestsize? (e.g. 20) interest out
-    boost::thread *t = new boost::thread(&FileDownloader::sendNextInterests,this,20);
-    request_threads.add_thread(t);
+    // send bitrate / interestsize? (e.g. 40) interests out
+    sendNextInterests(40);
 
     // wait for a sec
     boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
   }while(!allChunksReceived());
-
-  request_threads.join_all();
 
   // all chunks / file has been downloaded
   // unify buffers and return
@@ -67,15 +63,17 @@ void FileDownloader::sendNextInterests(int max){
       buffer[index].state = chunk_state::requested;
       if(expressed_interests >= max)
       {
-        cout << "sending batch" << endl;
+          const std::time_t ctt = std::time(0);
+          cout << asctime(localtime(&ctt)) << "sending batch" << endl;
         return;
       }
     }
   }
-  cout << "sending batch" << endl;
+  const std::time_t ctt = std::time(0);
+  cout << asctime(localtime(&ctt)) << "sending batch" << endl;
 
-  // bocking problematic, sendNextInterests in new thread?
-  m_face.processEvents(); // send out batch (async????)
+  m_face.processEvents(); // blocking?
+  //m_face.processEvents(time::milliseconds(-1),false); // just process events, not blocking here
 }
 
 void FileDownloader::expressInterest(int seq_nr)

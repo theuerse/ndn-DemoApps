@@ -24,7 +24,7 @@ def build(bld):
         features='cxx',
         target='producer',
         source='src/producer/Producer.cpp  src/utils/buffer.cpp',
-        use='NDN_CXX',
+        use='NDN_CXX BOOST_THREAD',
         )
 
     #bld.program(

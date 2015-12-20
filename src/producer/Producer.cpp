@@ -7,10 +7,27 @@ ndn::Producer::Producer(string prefix, string document_root, int data_size, int 
     this->document_root =  (document_root.back() == '/') ? document_root.erase(document_root.size()-1) : document_root;
     this-> data_size = data_size;
     this->freshness_seconds = freshness_seconds;
+
+    initThreading();
 }
 
 ndn::Producer::~Producer()
 {
+    // shutdown threading
+    ioService.stop(); // stop taking on new tasks
+    threadpool.join_all(); // wait to finish
+}
+
+void ndn::Producer::initThreading()
+{
+  // create some work for service to prevent premature termination
+  work = shared_ptr<boost::asio::io_service::work>(new boost::asio::io_service::work(ioService));
+
+  for(int i = 0; i < 4; i++) // use e.g 4 Threads
+  {
+    // add thread to pool
+    threadpool.create_thread(boost::bind(&boost::asio::io_service::run, &ioService));
+  }
 }
 
 // register prefix on NFD
@@ -108,35 +125,41 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
 // react to arrival of a Interest-Package
 void ndn::Producer::onInterest(const InterestFilter& filter, const Interest& interest)
 {
-    cout << "Received Interest: " << interest << endl;
+  // assign task to the thread pool
+  ioService.post(boost::bind(&ndn::Producer::satisfyInterest, this, interest));
+}
 
-    // Create new name, based on Interest's name
-    Name dataName(interest.getName());
+void ndn::Producer::satisfyInterest(const Interest& interest)
+{
+  cout << "Received Interest: " << interest << endl;
 
-    // DEBUG: have a look at infos in Interest
-    cout << "Interest-name:" << interest.getName() << endl;
+  // Create new name, based on Interest's name
+  Name dataName(interest.getName());
 
-    file_chunk_t result = getFileContent(interest);
-    if(result.success)
-    {
-        dataName.appendVersion();  // add "version" component (current UNIX timestamp in milliseconds)
+  // DEBUG: have a look at infos in Interest
+  //cout << "Interest-name:" << interest.getName() << endl;
 
-        //string content = generateContent(data_size); // fake data creation
+  file_chunk_t result = getFileContent(interest);
+  if(result.success)
+  {
+    dataName.appendVersion();  // add "version" component (current UNIX timestamp in milliseconds)
 
-        // Create Data packet
-        shared_ptr<Data> data = make_shared<Data>();
-        data->setName(dataName);
-        data->setFreshnessPeriod(time::seconds(freshness_seconds));
-        //data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.size());
-        data->setContent((uint8_t* )result.buffer->getData(), result.buffer->getSize ());
-        data->setFinalBlockId(ndn::Name::Component(std::to_string(result.final_block_id)));
+    //string content = generateContent(data_size); // fake data creation
 
-        // Sign Data packet with default identity
-        m_keyChain.sign(*data);
+    // Create Data packet
+    shared_ptr<Data> data = make_shared<Data>();
+    data->setName(dataName);
+    data->setFreshnessPeriod(time::seconds(freshness_seconds));
+    //data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.size());
+    data->setContent((uint8_t* )result.buffer->getData(), result.buffer->getSize ());
+    data->setFinalBlockId(ndn::Name::Component(std::to_string(result.final_block_id)));
 
-        // Return Data packet
-        m_face.put(*data);
-    }
+    // Sign Data packet with default identity
+    m_keyChain.sign(*data);
+
+    // Return Data packet
+    m_face.put(*data);
+  }
 }
 
 // react to failure of prefix-registration

@@ -19,6 +19,10 @@
 #include "boost/shared_ptr.hpp"
 #include "../utils/buffer.hpp"
 
+#include <boost/asio/io_service.hpp>
+#include <boost/bind.hpp>
+#include <boost/thread/thread.hpp>
+
 using namespace std;
 using namespace boost::program_options;
 
@@ -37,6 +41,8 @@ class Producer : noncopyable
             int final_block_id;
         };
 
+        void initThreading();
+        void satisfyInterest(const Interest& interest);
         string generateContent(const int length);
         void onInterest(const InterestFilter& filter, const Interest& interest);
         void onRegisterFailed(const Name& prefix, const string& reason);
@@ -48,6 +54,11 @@ class Producer : noncopyable
         string document_root;
         int data_size;
         int freshness_seconds;
+
+        boost::asio::io_service ioService;
+        boost::thread_group threadpool;
+        shared_ptr<boost::asio::io_service::work> work;
+
 };
 }   // end namespace ndn
 
