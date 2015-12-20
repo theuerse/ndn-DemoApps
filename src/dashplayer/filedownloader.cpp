@@ -24,8 +24,10 @@ shared_ptr<itec::Buffer> FileDownloader::getFile(string name){
 
 // (start) downloading the file
 void FileDownloader::download(){
-  this->buffer.resize(1,chunk()); // insert initial 10 entreis ??
-  while(!allChunksReceived())
+  boost::thread_group request_threads;
+  this->buffer.resize(5,chunk()); // insert initial 5 entries (requested)
+
+  do
   {
     // check if caller cancelled
     if(this->state == process_state::cancelled)
@@ -34,12 +36,15 @@ void FileDownloader::download(){
       return; // cancelled, do not touch file (-buffer)
     }
 
-    // send bitrate / interestsize? interest out
-    sendNextInterests(20);
+    // send bitrate / interestsize? (e.g. 20) interest out
+    boost::thread *t = new boost::thread(&FileDownloader::sendNextInterests,this,20);
+    request_threads.add_thread(t);
 
     // wait for a sec
     boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
-  }
+  }while(!allChunksReceived());
+
+  request_threads.join_all();
 
   // all chunks / file has been downloaded
   // unify buffers and return
