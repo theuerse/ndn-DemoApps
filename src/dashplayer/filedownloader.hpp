@@ -4,11 +4,14 @@
 // for communication with NFD
 #include <ndn-cxx/face.hpp>
 #include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/util/scheduler.hpp>
 
 // string ops
 #include "boost/algorithm/string.hpp"
 #include "boost/lexical_cast.hpp"
 #include "boost/shared_ptr.hpp"
+#include "boost/asio/deadline_timer.hpp"
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <string>
 #include <stdio.h>
@@ -20,7 +23,7 @@ using namespace std;
 using namespace ndn;
 
 namespace player {
-class FileDownloader
+class FileDownloader : boost::noncopyable
 {
 public:
   FileDownloader(int interest_lifetime);
@@ -28,30 +31,31 @@ public:
   shared_ptr<itec::Buffer> getFile(string name);
   void cancel();
 protected:
-  enum class process_state {startup, running, cancelled};
-  enum class chunk_state {pending, requested, received};
+  enum class process_state {running, cancelled, finished};
+  enum class chunk_state {unavailable, requested, received};
   struct chunk {
       shared_ptr<itec::Buffer> data;
-      chunk_state state = chunk_state::pending;
+      chunk_state state = chunk_state::unavailable;
   };
 
   void onData(const Interest& interest, const Data& data);
   void onTimeout(const Interest& interest);
   void onFileReceived();
-  void download();
-  void sendNextInterests(int max);
+  void sendNextInterest(boost::asio::deadline_timer *timer);
   void expressInterest(int seq_nr);
   bool allChunksReceived();
 
-  Face m_face;
   int interest_lifetime;
   vector<chunk> buffer;
   int finalBockId;
   string file_name;
-  int bitrate;
+  int requestRate;
   process_state state;
 
   shared_ptr<itec::Buffer> file;
+
+  boost::asio::io_service m_ioService;
+  Face m_face;
 };
 }
 #endif // FILEDOWNLOADER_HPP
