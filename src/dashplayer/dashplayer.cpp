@@ -183,6 +183,8 @@ bool DashPlayer::parseMPD(std::string mpd_path)
     return false;
   }
   base_url = baseUrls.at (0)->GetUrl();
+  if(base_url.substr (0,7).compare ("http://") == 0)
+    base_url = base_url.substr(6,base_url.length ());
 
   // Get the adaptation sets, though we are only consider the first one
   std::vector<IAdaptationSet *> allAdaptationSets = currentPeriod->GetAdaptationSets();
