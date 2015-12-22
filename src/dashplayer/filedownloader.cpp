@@ -147,5 +147,5 @@ void FileDownloader::onFileReceived ()
   }
 
   state = process_state::finished;
-  fprintf(stderr, "File received!\n");
+  //fprintf(stderr, "File received!\n");
 }
