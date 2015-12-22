@@ -7,6 +7,8 @@
 // using boost for file-system handling / cmd_options
 #include "filedownloader.hpp"
 
+#include <ndn-cxx/util/scheduler.hpp>
+
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
@@ -44,7 +46,7 @@ namespace player {
 class DashPlayer
 {
     public:
-        DashPlayer(string MPD, string adaptionlogic_name, int interest_lifetime);
+        DashPlayer(string MPD, string adaptionlogic_name, int interest_lifetime, int run_time);
         virtual ~DashPlayer();
         void startStreaming();
 
@@ -91,6 +93,11 @@ class DashPlayer
 
         std::string myId;
         void setMyId();
+
+        void stopPlayer();
+        int maxRuntimeSeconds;
+
+        bool maxRunTimeReached;
 };
 }   // end namespace ndn
 

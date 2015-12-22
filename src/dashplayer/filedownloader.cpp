@@ -2,7 +2,7 @@
 
 using namespace player;
 
-#define BITRATE 1500.0 //kbits
+#define BITRATE 800.0 //kbits
 #define DATA_SIZE 4096.0 //byte
 
 FileDownloader::FileDownloader(int interest_lifetime) : m_face(m_ioService)
@@ -147,5 +147,5 @@ void FileDownloader::onFileReceived ()
   }
 
   state = process_state::finished;
-  //fprintf(stderr, "File received!\n");
+  fprintf(stderr, "File received!\n");
 }

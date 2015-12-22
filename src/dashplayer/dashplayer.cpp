@@ -2,7 +2,7 @@
 
 using namespace player;
 
-DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_lifetime)
+DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_lifetime, int run_time)
 {
     this->adaptionlogic_name = adaptionlogic_name;
     this->interest_lifetime = interest_lifetime;
@@ -28,7 +28,11 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
     requestedSegmentNr = 0;
     requestedSegmentURL = NULL;
 
+    maxRuntimeSeconds = run_time;
+
     setMyId ();
+
+    maxRunTimeReached = false;
 
     logFile.open ("dashplayer_trace" + myId + ".txt", ios::out); // keep logfile open until app shutdown
     logFilePrintHeader();
@@ -66,6 +70,16 @@ void DashPlayer::startStreaming ()
   //3. start consuming (2. thread)
   boost::thread playbackThread(&DashPlayer::schedulePlayback, this);
 
+
+  //limit run time
+  boost::asio::io_service m_ioService;
+  ndn::Scheduler m_scheduler(m_ioService);
+  if(maxRuntimeSeconds > 0)
+  {
+    m_scheduler.scheduleEvent (ndn::time::seconds(maxRuntimeSeconds), bind(&DashPlayer::stopPlayer, this));
+  }
+  m_ioService.run ();
+
   //wait until threads finished
   downloadThread.join ();
   playbackThread.join ();
@@ -75,8 +89,7 @@ void DashPlayer::startStreaming ()
 
 void DashPlayer::scheduleDownloadNextSegment ()
 {
-
-  while(!hasDownloadedAllSegments)
+  while(!hasDownloadedAllSegments && !maxRunTimeReached)
   {
     requestedRepresentation = NULL;
     requestedSegmentNr = 0;
@@ -149,8 +162,21 @@ void DashPlayer::schedulePlayback ()
       }
     }
 
+    if(maxRunTimeReached)
+    {
+      downloader->cancel ();
+      break;
+    }
     entry = mbuffer->consumeFromBuffer ();
   }
+
+  //consume all remaining segmetns in buffer //just for logging purpose
+  stallDuration = boost::posix_time::time_duration(0,0,0,0);
+  while((entry = mbuffer->consumeFromBuffer ()).segmentDuration > 0.0)
+  {
+    logSegmentConsume(entry,stallDuration);
+  }
+
 }
 
 bool DashPlayer::parseMPD(std::string mpd_path)
@@ -231,7 +257,8 @@ int main(int argc, char** argv)
   desc.add_options ()
       ("name,p", value<string>()->required (), "The name of the interest to be sent (Required)")
       ("adaptionlogic,a",value<string>()->required(), "The name of the adaption-logic to be used (Required)")
-      ("lifetime,s", value<int>(), "The lifetime of the interest in milliseconds. (Default 1000ms)");
+      ("lifetime,s", value<int>(), "The lifetime of the interest in milliseconds. (Default 1000ms)")
+      ("run-time,t", value<int>(), "Runtime of the Dashplayer in Seconds. If not specified it is unlimited.");
 
   positional_options_description positionalOptions;
   variables_map vm;
@@ -250,8 +277,9 @@ int main(int argc, char** argv)
     cerr << "name           ... The name of the interest to be sent (Required)" << endl;
     cerr << "adaptionlogic  ... The name of the adaption-logic to be used (Required, buffer or rate)" << endl;
     cerr << "lifetime       ... The lifetime of the interest in milliseconds. (Default 1000ms)" << endl;
+    cerr << "run-time       ... The maximal runtime of the dashplayer in seconds (Default -1 = unlimited)" << endl;
     cerr << "usage-example: " << "./" << appName << " --name /example/testApp/randomData --adaptionlogic buffer" << endl;
-    cerr << "usage-example: " << "./" << appName << " --name /example/testApp/randomData --adaptionlogic buffer --lifetime 1000" << endl;
+    cerr << "usage-example: " << "./" << appName << " --name /example/testApp/randomData --adaptionlogic buffer --lifetime 1000 --run-time 300" << endl;
 
     cerr << "ERROR: " << e.what() << endl << endl;
     return -1;
@@ -275,8 +303,14 @@ int main(int argc, char** argv)
     lifetime = vm["lifetime"].as<int>();
   }
 
+  int runtime = -1;
+  if(vm.count ("run-time"))
+  {
+    runtime = vm["run-time"].as<int>();
+  }
+
   // create new DashPlayer instance with given parameters
-  DashPlayer consumer(vm["name"].as<string>(),vm["adaptionlogic"].as<string>(), lifetime);
+  DashPlayer consumer(vm["name"].as<string>(),vm["adaptionlogic"].as<string>(), lifetime, runtime);
 
   try
   {
@@ -397,4 +431,10 @@ void DashPlayer::setMyId()
   }
 
   myId = boost::lexical_cast<std::string>(id-10);
+}
+
+void DashPlayer::stopPlayer ()
+{
+  fprintf(stderr, "Stop Player!\n");
+  maxRunTimeReached = true;
 }
