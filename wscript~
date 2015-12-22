@@ -37,6 +37,6 @@ def build(bld):
     bld.program(
         features='cxx',
         target='dashplayer',
-        source='src/dashplayer/dashplayer.cpp src/dashplayer/filedownloader.cpp src/utils/buffer.cpp src/dashplayer/adaptationlogic.cpp src/dashplayer/multimediabuffer.cpp src/dashplayer/adaptationlogic-buffer-svc.cpp src/dashplayer/adaptationlogic-rate-svc.cpp',
+        source='src/dashplayer/dashplayer.cpp src/dashplayer/filedownloader.cpp src/utils/buffer.cpp src/dashplayer/adaptationlogic.cpp src/dashplayer/multimediabuffer.cpp src/dashplayer/adaptationlogic-buffer-svc.cpp',
         use='NDN_CXX DASH BOOST_THREAD',
         )
