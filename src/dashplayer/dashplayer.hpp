@@ -51,6 +51,9 @@ class DashPlayer
         void startStreaming();
 
         double GetBufferLevel(std::string repId = std::string("NULL"));
+        double GetBufferPercentage(std::string repId = std::string("NULL"));
+        double GetLastDownloadBitRate();
+
         unsigned int nextSegmentNrToConsume();
         unsigned int getHighestBufferedSegmentNr(std::string repId);
 

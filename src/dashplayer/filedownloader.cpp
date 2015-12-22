@@ -22,7 +22,27 @@ shared_ptr<itec::Buffer> FileDownloader::getFile(string name){
   sendNextInterest(&timer); // starts the download
 
   // processEvents will block until the requested data received or timeout occurs#
+
+  boost::posix_time::ptime startTime = boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time());
   m_face.processEvents();
+  boost::posix_time::ptime endTime = boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time());
+  boost::posix_time::time_duration downloadDuration = endTime-startTime;
+
+  double dwrate = 0.0;
+  for(int i = 0; i < buffer.size (); i++)
+  {
+    if(buffer.at(i).state == chunk_state::received)
+     dwrate+=buffer.at(i).data->getSize();
+  }
+  if(downloadDuration.total_milliseconds () > 0)
+  {
+    dwrate = (dwrate * 8) / downloadDuration.total_milliseconds (); //bits/ms
+    dwrate *= 1000; //bits/s
+  }
+  else
+    dwrate = 0.0;
+
+  fprintf(stderr, "dwrate = %f\n", dwrate);
 
   return file;
 }

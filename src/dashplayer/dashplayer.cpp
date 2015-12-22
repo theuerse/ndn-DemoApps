@@ -334,6 +334,14 @@ double DashPlayer::GetBufferLevel(std::string repId)
     return mbuffer->getBufferedSeconds (repId);
 }
 
+double DashPlayer::GetBufferPercentage(std::string repId)
+{
+  if(repId.compare ("NULL") == 0)
+    return mbuffer->getBufferedPercentage ();
+  else
+    return mbuffer->getBufferedPercentage (repId);
+}
+
 unsigned int DashPlayer::nextSegmentNrToConsume ()
 {
   return mbuffer->nextSegmentNrToBeConsumed ();
@@ -437,4 +445,9 @@ void DashPlayer::stopPlayer ()
 {
   fprintf(stderr, "Stop Player!\n");
   maxRunTimeReached = true;
+}
+
+double DashPlayer::GetLastDownloadBitRate()
+{
+  return 0.0; //TODO
 }
