@@ -175,7 +175,6 @@ unsigned int SVCBufferAdaptationLogic::getNextNeededSegmentNumber(int layer)
 
 bool SVCBufferAdaptationLogic::hasMinBufferLevel(const dash::mpd::IRepresentation* rep)
 {
-
   std::string repId = rep->GetId ();
 
   //determine layer of rep
@@ -196,6 +195,8 @@ bool SVCBufferAdaptationLogic::hasMinBufferLevel(const dash::mpd::IRepresentatio
   }
   else if( layer == 0) // nerver stop download for layer 0
     return true;
+
+  //fprintf(stderr, "hasMinBufferLevel(%s): desired_buffer_size= = %d\n",rep->GetId ().c_str (), desired_buffer_size(layer-1, layer));
 
   if (dashplayer->GetBufferLevel(m_orderdByDepIdReps[layer - 1]->GetId()) < desired_buffer_size(layer-1, layer))
     return false;

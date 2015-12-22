@@ -10,6 +10,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 // file ops
 #include <iostream>
@@ -22,6 +23,17 @@
 #include "adaptationlogic-buffer-svc.hpp"
 
 #include "multimediabuffer.hpp"
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+
+#include <iomanip>
+#include <ctime>
+#include <iostream>
 
 using namespace std;
 using namespace dash::mpd;
@@ -59,8 +71,9 @@ class DashPlayer
 
         string adaptionlogic_name;
 
-        const dash::mpd::IRepresentation* last_requestedRepresentation;
-        unsigned int last_requestedSegmentNr;
+        const dash::mpd::IRepresentation* requestedRepresentation;
+        unsigned int requestedSegmentNr;
+        dash::mpd::ISegmentURL* requestedSegmentURL;
 
         void scheduleDownloadNextSegment();
         void schedulePlayback();
@@ -70,6 +83,14 @@ class DashPlayer
         int max_buffered_seconds;
 
         bool hasDownloadedAllSegments;
+
+        ofstream logFile;
+
+        void logFilePrintHeader();
+        void logSegmentConsume(player::MultimediaBuffer::BufferRepresentationEntry &entry, boost::posix_time::time_duration& stallingTime);
+
+        std::string myId;
+        void setMyId();
 };
 }   // end namespace ndn
 

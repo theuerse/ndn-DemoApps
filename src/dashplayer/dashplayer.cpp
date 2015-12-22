@@ -24,12 +24,19 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
     hasDownloadedAllSegments = false;
     isStalling=false;
 
-    last_requestedRepresentation = NULL;
-    last_requestedSegmentNr = 0;
+    requestedRepresentation = NULL;
+    requestedSegmentNr = 0;
+    requestedSegmentURL = NULL;
+
+    setMyId ();
+
+    logFile.open ("dashplayer_trace" + myId + ".txt", ios::out); // keep logfile open until app shutdown
+    logFilePrintHeader();
 }
 
 DashPlayer::~DashPlayer()
 {
+  logFile.close ();
 }
 
 void DashPlayer::startStreaming ()
@@ -68,92 +75,82 @@ void DashPlayer::startStreaming ()
 
 void DashPlayer::scheduleDownloadNextSegment ()
 {
-  const dash::mpd::IRepresentation* requestedRepresentation = NULL;
-  unsigned int requestedSegmentNr = 0;
-  dash::mpd::ISegmentURL* requestedSegmentURL = alogic->GetNextSegment(&requestedSegmentNr, &requestedRepresentation, &hasDownloadedAllSegments);
 
-  if(hasDownloadedAllSegments) // we got all segmetns, exit download thread
-    return;
-
-  if(requestedSegmentURL == NULL) // IDLE e.g. buffer is full
+  while(!hasDownloadedAllSegments)
   {
-    boost::this_thread::sleep(boost::posix_time::milliseconds(500));
-    scheduleDownloadNextSegment();
-    return;
+    requestedRepresentation = NULL;
+    requestedSegmentNr = 0;
+
+    requestedSegmentURL = alogic->GetNextSegment(&requestedSegmentNr, &requestedRepresentation, &hasDownloadedAllSegments);
+
+    if(requestedSegmentURL == NULL) // IDLE e.g. buffer is full
+    {
+      boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+      continue;
+    }
+
+    fprintf(stderr, "downloading segment = %s\n",(base_url+requestedSegmentURL->GetMediaURI()).c_str ());
+
+    shared_ptr<itec::Buffer> segmentData = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI());
+
+    if(segmentData->getSize() != 0)
+    {
+      while(!mbuffer->addToBuffer (requestedSegmentNr, requestedRepresentation));
+        boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+    }
   }
-
-  fprintf(stderr, "downloading segment = %s\n",(base_url+requestedSegmentURL->GetMediaURI()).c_str ());
-
-  last_requestedRepresentation = requestedRepresentation;
-  last_requestedSegmentNr = requestedSegmentNr;
-
-  shared_ptr<itec::Buffer> segmentData = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI());
-
-  if(segmentData != NULL)
-  {
-    mbuffer->addToBuffer (requestedSegmentNr, requestedRepresentation);
-  }
-
-  scheduleDownloadNextSegment();
 }
 
 void DashPlayer::schedulePlayback ()
 {
+  boost::posix_time::ptime stallEndTime;
+  boost::posix_time::time_duration stallDuration;
 
-  fprintf(stderr, "Schedule playback\n");
-
-  unsigned int buffer_level = mbuffer->getBufferedSeconds();
+  player::MultimediaBuffer::BufferRepresentationEntry entry = mbuffer->consumeFromBuffer ();;
 
   // did we finish streaming yet?
-  if (buffer_level == 0 && hasDownloadedAllSegments == true)
-     return; //finished streaming
-
-  player::MultimediaBuffer::BufferRepresentationEntry entry = mbuffer->consumeFromBuffer ();
-  double consumedSeconds = entry.segmentDuration;
-  if ( consumedSeconds > 0)
+  while(! (entry.segmentDuration == 0.0 && hasDownloadedAllSegments == true) )
   {
-    fprintf(stderr, "Consumed Segment %d, with Rep %s for %f seconds\n",entry.segmentNumber,entry.repId.c_str(), entry.segmentDuration);
-
-    if (isStalling)
+    if ( entry.segmentDuration > 0.0)
     {
-      boost::posix_time::ptime stallEndTime = boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time());
-      boost::posix_time::time_duration stallDuration;
+      fprintf(stderr, "Consumed Segment %d, with Rep %s for %f seconds\n",entry.segmentNumber,entry.repId.c_str(), entry.segmentDuration);
 
-      // we had a freeze/stall, but we can continue playing now
-      stallDuration = (stallEndTime - stallStartTime);
-      isStalling = false;
-    }
-
-    /*m_playerTracer(this, entry.segmentNumber, entry.segmentDuration, entry.repId,
-                   entry.bitrate_bit_s, freezeTime, entry.depIds);*/
-  }
-  else
-  {
-    // could not consume, means buffer is empty
-    if ( isStalling == false)
-    {
-      isStalling = true;
-      stallStartTime = boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time());
-    }
-  }
-
-  if(consumedSeconds == 0.0) // we are stalling
-  {
-    //check for download abort
-    if(last_requestedRepresentation != NULL && !hasDownloadedAllSegments && last_requestedRepresentation->GetDependencyId ().size ()>0)
-    {
-      if(alogic->hasMinBufferLevel (last_requestedRepresentation))
+      if (isStalling)
       {
-        //TODO abort download of current segment!
+        stallEndTime = boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time());
+
+        // we had a freeze/stall, but we can continue playing now
+        stallDuration = (stallEndTime - stallStartTime);
+        isStalling = false;
+      }
+      else
+        stallDuration = boost::posix_time::time_duration(0,0,0,0);
+
+      logSegmentConsume(entry,stallDuration);
+      boost::this_thread::sleep(boost::posix_time::milliseconds(entry.segmentDuration*1000)); //consume the segment
+    }
+    else
+    {
+      if ( isStalling == false) // could not consume, means buffer is empty
+      {
+        isStalling = true;
+        stallStartTime = boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time());
+      }
+      boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+    }
+
+    //check for download abort
+    if(requestedRepresentation != NULL && !hasDownloadedAllSegments && requestedRepresentation->GetDependencyId ().size () > 0)
+    {
+      if(! (alogic->hasMinBufferLevel (requestedRepresentation)))
+      {
+        fprintf(stderr, "canceling: %s", requestedSegmentURL->GetMediaURI ().c_str ());
+        downloader->cancel ();
       }
     }
-    boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+
+    entry = mbuffer->consumeFromBuffer ();
   }
-  else
-  {
-    boost::this_thread::sleep(boost::posix_time::milliseconds(consumedSeconds*1000));
-  }
-  schedulePlayback();
 }
 
 bool DashPlayer::parseMPD(std::string mpd_path)
@@ -311,4 +308,93 @@ unsigned int DashPlayer::nextSegmentNrToConsume ()
 unsigned int DashPlayer::getHighestBufferedSegmentNr(std::string repId)
 {
   return mbuffer->getHighestBufferedSegmentNr (repId);
+}
+
+void DashPlayer::logFilePrintHeader ()
+{
+  logFile << "Time"
+     << "\t"
+     << "Node"
+     << "\t"
+     << "SegmentNumber"
+     << "\t"
+     << "SegmentDuration(sec)"
+     << "\t"
+     << "SegmentRepID"
+     << "\t"
+     << "SegmentBitrate(bit/s)"
+     << "\t"
+     << "StallingTime(msec)"
+     << "\t"
+     << "SegmentDepIds\n";
+  logFile.flush ();
+}
+
+void  DashPlayer::logSegmentConsume(player::MultimediaBuffer::BufferRepresentationEntry &entry, boost::posix_time::time_duration& stallingTime)
+{
+  boost::posix_time::ptime now = boost::posix_time::second_clock::local_time();
+
+  logFile << boost::posix_time::to_simple_string (now)  << "\t"
+          << "PI_" << myId  << "\t"
+          << entry.segmentNumber  << "\t"
+          << entry.segmentDuration  << "\t"
+          << entry.repId << "\t"
+          << entry.bitrate_bit_s << "\t"
+          << stallingTime.total_milliseconds () << "\t";
+
+  for(unsigned int i = 0; i < entry.depIds.size (); i++)
+  {
+    if(i == 0)
+      logFile << entry.depIds.at (i);
+    else
+      logFile << "," <<entry.depIds.at (i);
+  }
+  logFile << "\n";
+
+  logFile.flush ();
+}
+
+void DashPlayer::setMyId()
+{
+  myId = "0";
+
+  int fd;
+  struct ifreq ifr;
+
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+  /* I want to get an IPv4 IP address */
+  ifr.ifr_addr.sa_family = AF_INET;
+
+  /* I want IP address attached to "eth0" */
+  strncpy(ifr.ifr_name, "eth0.101", IFNAMSIZ-1);
+
+  if(ioctl(fd, SIOCGIFADDR, &ifr) != 0)
+  {
+    strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+    ioctl(fd, SIOCGIFADDR, &ifr);
+  }
+
+  close(fd);
+
+  std::string ip(inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+
+  std::vector<std::string> ip_octets;
+  boost::split(ip_octets, ip, boost::is_any_of("."));
+
+  if(ip_octets.size () != 4)
+  {
+    fprintf(stderr, "Invalid IP using default id = 0\n");
+    return;
+  }
+
+  int id = boost::lexical_cast<int>(ip_octets.at (3));
+
+  if(id < 10)
+  {
+    fprintf(stderr, "Are you deploying this on the PInet? Setting default id = 0\n");
+    return;
+  }
+
+  myId = boost::lexical_cast<std::string>(id-10);
 }

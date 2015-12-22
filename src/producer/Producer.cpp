@@ -68,7 +68,7 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
     // get sequence number
     int seq_nr = interestName.at(-1).toSequenceNumber();
     interestName = interestName.getPrefix(-1); // remove seq-Nr
-    cout << "Info: seq-nr: " << seq_nr << endl;
+    //cout << "Info: seq-nr: " << seq_nr << endl;
 
     fprintf(stderr, "interestName=%s\n",interestName.toUri ().c_str ());
     fprintf(stderr, "prefix=%s\n",prefix.c_str ());
@@ -79,21 +79,21 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
 
     // get remaining filename (ignore prefix) //TODO: support multiple level prefix?
     string file_path = this->document_root + fname;
-    cout << "opening " << file_path << endl;
+    //cout << "opening " << file_path << endl;
 
     // try to open file
     ifstream inputStream;
-    cout << "opening file: " << file_path << endl;
+    //cout << "opening file: " << file_path << endl;
     inputStream.open(file_path, ios::binary);
 
     // get length of file:
     inputStream.seekg (0, inputStream.end);
     int file_length = inputStream.tellg();
-    cout << "file_length:" << file_length  << " byte(s)"<< endl;
+    //cout << "file_length:" << file_length  << " byte(s)"<< endl;
 
     // cope with request of chunk who doesn't exists
     int chunk_count = ceil((double)file_length / (double)this->data_size);
-    cout << "chunk_count " << chunk_count << endl;
+    //cout << "chunk_count " << chunk_count << endl;
 
     if(seq_nr > chunk_count-1)
     {
@@ -104,17 +104,17 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
 
     inputStream.seekg(this->data_size * seq_nr); // seek
     int pos = inputStream.tellg();
-    cout << "lesen ab position " << pos << endl;
+    //cout << "lesen ab position " << pos << endl;
 
     buffer_size = min(file_length - pos, this->data_size);
     buffer = new char [buffer_size];
 
     inputStream.read (buffer,buffer_size);
-    cout << "buffersize: " << buffer_size << endl;
-    cout << buffer << endl;
+    //cout << "buffersize: " << buffer_size << endl;
+    //cout << buffer << endl;
     inputStream.close();;
 
-    cout << "done" << endl;
+    //cout << "done" << endl;
     result.success = true;
     result.buffer = shared_ptr<itec::Buffer>( new itec::Buffer(buffer, buffer_size));
     //delete[] buffer;

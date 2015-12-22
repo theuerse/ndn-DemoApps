@@ -2,8 +2,8 @@
 
 using namespace player;
 
-#define BITRATE 8192.0
-#define DATA_SIZE 4096.0
+#define BITRATE 1500.0 //kbits
+#define DATA_SIZE 4096.0 //byte
 
 FileDownloader::FileDownloader(int interest_lifetime) : m_face(m_ioService)
 {
@@ -14,7 +14,7 @@ shared_ptr<itec::Buffer> FileDownloader::getFile(string name){
   this->buffer.clear();
   this->buffer.resize (20,chunk());
   this->state = process_state::running;
-  this->requestRate = 1000000/(BITRATE/DATA_SIZE); //microseconds
+  this->requestRate = 1000000/(BITRATE*1000/DATA_SIZE*8); //microseconds
   this->file = shared_ptr<itec::Buffer>(new itec::Buffer());
   this->file_name = name;
 
@@ -72,7 +72,7 @@ void FileDownloader::expressInterest(int seq_nr)
                          bind(&FileDownloader::onData, this,  _1, _2),
                          bind(&FileDownloader::onTimeout, this, _1));
 
-  cout << "Expressing interest #" << seq_nr << " " << interest << endl;
+  //cout << "Expressing interest #" << seq_nr << " " << interest << endl;
 }
 
 
@@ -85,25 +85,21 @@ void FileDownloader::onData(const Interest& interest, const Data& data)
 
   if(state == process_state::cancelled || state == process_state::finished)
   {
-    cout << "onData after cancel" << endl;
+    //cout << "onData after cancel" << endl;
     return;
   }
 
   // get sequence number
   int seq_nr = interest.getName().at(-1).toSequenceNumber();
-  cout << "data-packet #" << seq_nr <<  " received: " << endl;
+  //cout << "data-packet #" << seq_nr <<  " received: " << endl;
 
   const Block& block = data.getContent();
 
   // first data-packet arrived, allocate space
   this->finalBockId = boost::lexical_cast<int>(data.getFinalBlockId().toUri());
 
-  fprintf(stderr, "finalBockId = %d\n", finalBockId);
-  fprintf(stderr, "buffer.size()=%d\n", buffer.size ());
-
   if(! ((int)buffer.size () == finalBockId+1)) // we assume producer always transmitts a valid final block id
   {
-    fprintf(stderr, "set buffer size = %d\n",finalBockId+1);
     this->buffer.resize(finalBockId+1,chunk());
   }
 
@@ -128,10 +124,10 @@ void FileDownloader::onTimeout(const Interest& interest)
 {
   if(state == process_state::cancelled || state == process_state::finished)
   {
-      cout << "onTimeout after cancel" << endl;
+      //cout << "onTimeout after cancel" << endl;
       return;
   }
-  cout << "Timeout " << interest << endl;
+  //cout << "Timeout " << interest << endl;
   // get sequence number
   int seq_nr = interest.getName().at(-1).toSequenceNumber();
   buffer[seq_nr].state = chunk_state::unavailable; // reset state to pending -> queue for re-request
@@ -151,6 +147,5 @@ void FileDownloader::onFileReceived ()
   }
 
   state = process_state::finished;
-
-  fprintf(stderr, "File received!\n");
+  //fprintf(stderr, "File received!\n");
 }
