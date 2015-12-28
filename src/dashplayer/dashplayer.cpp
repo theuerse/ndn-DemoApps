@@ -2,6 +2,8 @@
 
 using namespace player;
 
+#define BITRATE 1200.0 //kbits
+
 DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_lifetime, int run_time)
 {
     this->adaptionlogic_name = adaptionlogic_name;
@@ -47,7 +49,7 @@ void DashPlayer::startStreaming ()
 {
   //1fetch MPD and parse MPD
   std::string mpd_path("/tmp/video.mpd");
-  shared_ptr<itec::Buffer> mpd_data = downloader->getFile (mpd_url);
+  shared_ptr<itec::Buffer> mpd_data = downloader->getFile (mpd_url, BITRATE);
 
   if(mpd_data == NULL)
   {
@@ -104,7 +106,7 @@ void DashPlayer::scheduleDownloadNextSegment ()
 
     fprintf(stderr, "downloading segment = %s\n",(base_url+requestedSegmentURL->GetMediaURI()).c_str ());
 
-    shared_ptr<itec::Buffer> segmentData = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI());
+    shared_ptr<itec::Buffer> segmentData = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI(),BITRATE);
 
     if(segmentData->getSize() != 0)
     {

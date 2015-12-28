@@ -2,7 +2,6 @@
 
 using namespace player;
 
-#define BITRATE 1200.0 //kbits
 #define DATA_SIZE 4096.0 //byte
 
 FileDownloader::FileDownloader(int interest_lifetime) : m_face(m_ioService)
@@ -10,11 +9,17 @@ FileDownloader::FileDownloader(int interest_lifetime) : m_face(m_ioService)
   this->interest_lifetime = interest_lifetime;
 }
 
-shared_ptr<itec::Buffer> FileDownloader::getFile(string name){
+/**
+ * @brief FileDownloader::getFile
+ * @param name and prefix of file to be fetched
+ * @param bitrate [kbits]
+ * @return a itec::Buffer containing the file
+ */
+shared_ptr<itec::Buffer> FileDownloader::getFile(string name, double bitrate){
   this->buffer.clear();
   this->buffer.resize (20,chunk());
   this->state = process_state::running;
-  this->requestRate = 1000000/((BITRATE*1000)/(DATA_SIZE*8.0)); //microseconds
+  this->requestRate = 1000000/((bitrate*1000)/(DATA_SIZE*8.0)); //microseconds
   this->file = shared_ptr<itec::Buffer>(new itec::Buffer());
   this->file_name = name;
 
@@ -29,7 +34,7 @@ shared_ptr<itec::Buffer> FileDownloader::getFile(string name){
   boost::posix_time::time_duration downloadDuration = endTime-startTime;
 
   double dwrate = 0.0;
-  for(int i = 0; i < buffer.size (); i++)
+  for(size_t i = 0; i < buffer.size (); i++)
   {
     if(buffer.at(i).state == chunk_state::received)
      dwrate+=buffer.at(i).data->getSize();
