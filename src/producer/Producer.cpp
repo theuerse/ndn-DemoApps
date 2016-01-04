@@ -99,7 +99,7 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
 
     if(seq_nr > chunk_count-1)
     {
-        cout << "out of bounds" << endl;
+        cout << "file does not exists or request exceeds file bounds" << endl;
         result.success=false;
         return result;
     }

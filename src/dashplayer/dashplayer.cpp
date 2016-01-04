@@ -216,9 +216,18 @@ bool DashPlayer::parseMPD(std::string mpd_path)
     fprintf(stderr, "No BaseUrl detected!\n");
     return false;
   }
+
   base_url = baseUrls.at (0)->GetUrl();
   if(base_url.substr (0,7).compare ("http://") == 0)
     base_url = base_url.substr(6,base_url.length ());
+
+  //prepend forwarding prefix to base url
+  vector<string> mpd_components;
+  boost::split(mpd_components,mpd_url,boost::is_any_of("/"));
+  if(mpd_components.size () > 1)
+    base_url = "/"+mpd_components.at (1) + base_url;
+  else
+    fprintf(stderr, "Warning MPD url has no components\n");
 
   // Get the adaptation sets, though we are only consider the first one
   std::vector<IAdaptationSet *> allAdaptationSets = currentPeriod->GetAdaptationSets();
