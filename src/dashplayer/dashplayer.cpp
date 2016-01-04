@@ -319,19 +319,7 @@ int main(int argc, char** argv)
   }
 
   // create new DashPlayer instance with given parameters
-
-  std::string logic = vm["adaptionlogic"].as<string>();
-  if(logic == "rate")
-    logic = "player::SVCRateBasedAdaptationLogic";
-  else if(logic == "buffer")
-    logic = "player::SVCBufferAdaptationLogic";
-  else
-  {
-    cerr << "terminating: adaptionlogic must either be 'buffer' or 'rate'" << endl;
-    return -1;
-  }
-
-  DashPlayer consumer(vm["name"].as<string>(),logic, lifetime, runtime);
+  DashPlayer consumer(vm["name"].as<string>(),vm["adaptionlogic"].as<string>(), lifetime, runtime);
 
   try
   {
