@@ -51,7 +51,7 @@ FileDownloader::FileStruct FileDownloader::getFile(string name, double bitrate){
   fstruct.buffer = file;
   fstruct.dwrate = dwrate;
 
-  fprintf(stderr, "dwrate = %f\n", dwrate);
+  //fprintf(stderr, "dwrate = %f\n", dwrate);
 
   return fstruct;
 }

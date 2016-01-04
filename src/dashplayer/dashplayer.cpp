@@ -2,9 +2,7 @@
 
 using namespace player;
 
-#define BITRATE 1200.0 //kbits
-
-DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_lifetime, int run_time)
+DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_lifetime, int run_time, double request_rate)
 {
     this->adaptionlogic_name = adaptionlogic_name;
     this->interest_lifetime = interest_lifetime;
@@ -35,6 +33,7 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
     maxRunTimeReached = false;
 
     lastDWRate = 0.0;
+    this->requestRate = request_rate;
 
     logFile.open ("dashplayer_trace" + myId + ".txt", ios::out); // keep logfile open until app shutdown
     logFilePrintHeader();
@@ -50,7 +49,7 @@ void DashPlayer::startStreaming ()
   //1fetch MPD and parse MPD
   std::string mpd_path("/tmp/video.mpd");
 
-  FileDownloader::FileStruct fstruct = downloader->getFile (mpd_url, BITRATE);
+  FileDownloader::FileStruct fstruct = downloader->getFile (mpd_url, requestRate);
   shared_ptr<itec::Buffer> mpd_data = fstruct.buffer;
   lastDWRate = fstruct.dwrate;
 
@@ -111,12 +110,12 @@ void DashPlayer::scheduleDownloadNextSegment ()
     fprintf(stderr, "downloading segment = %s\n",(base_url+requestedSegmentURL->GetMediaURI()).c_str ());
 
 
-    FileDownloader::FileStruct fstruct = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI(),BITRATE);
+    FileDownloader::FileStruct fstruct = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI(),requestRate);
     shared_ptr<itec::Buffer> segmentData = fstruct.buffer;
-    lastDWRate = fstruct.dwrate;
 
     if(segmentData->getSize() != 0)
     {
+      lastDWRate = fstruct.dwrate;
       while(!mbuffer->addToBuffer (requestedSegmentNr, requestedRepresentation));
         boost::this_thread::sleep(boost::posix_time::milliseconds(500));
     }
@@ -135,7 +134,7 @@ void DashPlayer::schedulePlayback ()
   {
     if ( entry.segmentDuration > 0.0)
     {
-      fprintf(stderr, "Consumed Segment %d, with Rep %s for %f seconds\n",entry.segmentNumber,entry.repId.c_str(), entry.segmentDuration);
+      //fprintf(stderr, "Consumed Segment %d, with Rep %s for %f seconds\n",entry.segmentNumber,entry.repId.c_str(), entry.segmentDuration);
 
       if (isStalling)
       {
@@ -267,7 +266,8 @@ int main(int argc, char** argv)
       ("name,p", value<string>()->required (), "The name of the interest to be sent (Required)")
       ("adaptionlogic,a",value<string>()->required(), "The name of the adaption-logic to be used (Required)")
       ("lifetime,s", value<int>(), "The lifetime of the interest in milliseconds. (Default 1000ms)")
-      ("run-time,t", value<int>(), "Runtime of the Dashplayer in Seconds. If not specified it is unlimited.");
+      ("run-time,t", value<int>(), "Runtime of the Dashplayer in Seconds. If not specified it is unlimited.")
+      ("request-rate,r", value<double>()->required (), "Request Rate in kbits assuming 4kb large data packets.");
 
   positional_options_description positionalOptions;
   variables_map vm;
@@ -319,7 +319,7 @@ int main(int argc, char** argv)
   }
 
   // create new DashPlayer instance with given parameters
-  DashPlayer consumer(vm["name"].as<string>(),vm["adaptionlogic"].as<string>(), lifetime, runtime);
+  DashPlayer consumer(vm["name"].as<string>(),vm["adaptionlogic"].as<string>(), lifetime, runtime, vm["request-rate"].as<double>());
 
   try
   {

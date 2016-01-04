@@ -37,10 +37,9 @@ public:
   void RegisterAdaptationLogic(std::string aLogicType,
                         ALogicFunctionPointer functionPointer)
   {
-    fprintf(stderr, "registering %s\n", aLogicType.c_str());
     if (GetInstance()->AvailALogics.find(aLogicType) == GetInstance()->AvailALogics.end())
     {
-      std::cerr << "AdaptationLogicFactory():\tRegistering Adaptation Logic of Type " << aLogicType << std::endl;
+      //std::cerr << "AdaptationLogicFactory():\tRegistering Adaptation Logic of Type " << aLogicType << std::endl;
       GetInstance()->AvailALogics[aLogicType] = functionPointer;
     }
   }

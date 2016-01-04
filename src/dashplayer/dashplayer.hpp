@@ -46,7 +46,7 @@ namespace player {
 class DashPlayer
 {
     public:
-        DashPlayer(string MPD, string adaptionlogic_name, int interest_lifetime, int run_time);
+        DashPlayer(string MPD, string adaptionlogic_name, int interest_lifetime, int run_time, double request_rate);
         virtual ~DashPlayer();
         void startStreaming();
 
@@ -102,6 +102,7 @@ class DashPlayer
 
         bool maxRunTimeReached;
 
+        double requestRate;
         double lastDWRate;
 };
 }   // end namespace ndn

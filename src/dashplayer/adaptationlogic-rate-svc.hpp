@@ -4,7 +4,7 @@
 #include "adaptationlogic.hpp"
 #include <stack>
 
-#define RateBasedMinBufferLevel 10.0 //Seconds
+#define RateBasedMinBufferLevel 8.0 //Seconds
 #define GrowingBuffer 4.0 //Seconds
 #define RateBasedEMA_W 0.3
 
