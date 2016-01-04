@@ -59,7 +59,8 @@ public:
     else
     {
       std::cerr << "AdaptationLogicFactory():\tError - Could not find Adaptation Logic of Type " << adaptationLogicType << std::endl;
-      return nullptr;
+      return boost::shared_ptr<AdaptationLogic>();
+      //return nullptr;
     }
   }
 };
