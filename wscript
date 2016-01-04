@@ -22,7 +22,7 @@ def configure(conf):
 def build(bld):
     bld.program(
         features='cxx',
-        target='producer',
+        target='dashproducer',
         source='src/producer/Producer.cpp  src/utils/buffer.cpp',
         use='NDN_CXX BOOST_THREAD',
         )
