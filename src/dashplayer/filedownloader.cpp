@@ -15,7 +15,7 @@ FileDownloader::FileDownloader(int interest_lifetime) : m_face(m_ioService)
  * @param bitrate [kbits]
  * @return a itec::Buffer containing the file
  */
-shared_ptr<itec::Buffer> FileDownloader::getFile(string name, double bitrate){
+FileDownloader::FileStruct FileDownloader::getFile(string name, double bitrate){
   this->buffer.clear();
   this->buffer.resize (20,chunk());
   this->state = process_state::running;
@@ -47,9 +47,13 @@ shared_ptr<itec::Buffer> FileDownloader::getFile(string name, double bitrate){
   else
     dwrate = 0.0;
 
+  FileStruct fstruct;
+  fstruct.buffer = file;
+  fstruct.dwrate = dwrate;
+
   fprintf(stderr, "dwrate = %f\n", dwrate);
 
-  return file;
+  return fstruct;
 }
 
 // send next pending interest, returns success-indicator

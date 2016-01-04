@@ -28,7 +28,13 @@ class FileDownloader : boost::noncopyable
 public:
   FileDownloader(int interest_lifetime);
 
-  shared_ptr<itec::Buffer> getFile(string name, double bitrate);
+  struct FileStruct
+  {
+    shared_ptr<itec::Buffer> buffer; //file data
+    double dwrate; //download rate
+  };
+
+  FileStruct getFile(string name, double bitrate);
   void cancel();
 protected:
   enum class process_state {running, cancelled, finished};

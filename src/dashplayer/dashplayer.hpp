@@ -101,6 +101,8 @@ class DashPlayer
         int maxRuntimeSeconds;
 
         bool maxRunTimeReached;
+
+        double lastDWRate;
 };
 }   // end namespace ndn
 

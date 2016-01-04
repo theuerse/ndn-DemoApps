@@ -19,8 +19,6 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
     max_buffered_seconds=50;
     mbuffer = boost::shared_ptr<MultimediaBuffer>(new MultimediaBuffer(max_buffered_seconds));
 
-    //factory - to be replaced
-    alogic = AdaptationLogicFactory::Create(adaptionlogic_name, this); //TODO
     downloader = boost::shared_ptr<FileDownloader>(new FileDownloader(this->interest_lifetime ));
 
     hasDownloadedAllSegments = false;
@@ -36,6 +34,8 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
 
     maxRunTimeReached = false;
 
+    lastDWRate = 0.0;
+
     logFile.open ("dashplayer_trace" + myId + ".txt", ios::out); // keep logfile open until app shutdown
     logFilePrintHeader();
 }
@@ -49,7 +49,10 @@ void DashPlayer::startStreaming ()
 {
   //1fetch MPD and parse MPD
   std::string mpd_path("/tmp/video.mpd");
-  shared_ptr<itec::Buffer> mpd_data = downloader->getFile (mpd_url, BITRATE);
+
+  FileDownloader::FileStruct fstruct = downloader->getFile (mpd_url, BITRATE);
+  shared_ptr<itec::Buffer> mpd_data = fstruct.buffer;
+  lastDWRate = fstruct.dwrate;
 
   if(mpd_data == NULL)
   {
@@ -64,6 +67,7 @@ void DashPlayer::startStreaming ()
   if(!parseMPD(mpd_path))
     return;
 
+  alogic = AdaptationLogicFactory::Create(adaptionlogic_name, this);
   alogic->SetAvailableRepresentations (availableRepresentations);
 
   //2. start streaming (1. thread)
@@ -106,7 +110,10 @@ void DashPlayer::scheduleDownloadNextSegment ()
 
     fprintf(stderr, "downloading segment = %s\n",(base_url+requestedSegmentURL->GetMediaURI()).c_str ());
 
-    shared_ptr<itec::Buffer> segmentData = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI(),BITRATE);
+
+    FileDownloader::FileStruct fstruct = downloader->getFile (base_url+requestedSegmentURL->GetMediaURI(),BITRATE);
+    shared_ptr<itec::Buffer> segmentData = fstruct.buffer;
+    lastDWRate = fstruct.dwrate;
 
     if(segmentData->getSize() != 0)
     {
@@ -463,5 +470,5 @@ void DashPlayer::stopPlayer ()
 
 double DashPlayer::GetLastDownloadBitRate()
 {
-  return 0.0; //TODO
+  return lastDWRate; //TODO
 }
