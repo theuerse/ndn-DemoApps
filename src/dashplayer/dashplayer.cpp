@@ -271,7 +271,7 @@ int main(int argc, char** argv)
       ("lifetime,l", value<int>(), "The lifetime of the interest in milliseconds. (Default 1000ms)")
       ("run-time,t", value<int>(), "Runtime of the Dashplayer in Seconds. If not specified it is unlimited.")
       ("request-rate,r", value<double>()->required (), "Request Rate in kbits assuming 4kb large data packets.")
-      ("output-file, o", value<string>(), "Name of the dashplayer trace log file.");
+      ("output-file,o", value<string>(), "Name of the dashplayer trace log file.");
 
   positional_options_description positionalOptions;
   variables_map vm;
