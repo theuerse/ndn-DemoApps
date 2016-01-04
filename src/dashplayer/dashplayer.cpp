@@ -2,7 +2,7 @@
 
 using namespace player;
 
-DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_lifetime, int run_time, double request_rate)
+DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_lifetime, int run_time, double request_rate, std::string logFileName)
 {
     this->adaptionlogic_name = adaptionlogic_name;
     this->interest_lifetime = interest_lifetime;
@@ -35,7 +35,10 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
     lastDWRate = 0.0;
     this->requestRate = request_rate;
 
-    logFile.open ("dashplayer_trace" + myId + ".txt", ios::out); // keep logfile open until app shutdown
+    if(logFileName.empty ())
+      logFile.open ("dashplayer_trace" + myId + ".txt", ios::out); // keep logfile open until app shutdown
+    else
+      logFile.open (logFileName, ios::out);
     logFilePrintHeader();
 }
 
@@ -265,9 +268,10 @@ int main(int argc, char** argv)
   desc.add_options ()
       ("name,p", value<string>()->required (), "The name of the interest to be sent (Required)")
       ("adaptionlogic,a",value<string>()->required(), "The name of the adaption-logic to be used (Required)")
-      ("lifetime,s", value<int>(), "The lifetime of the interest in milliseconds. (Default 1000ms)")
+      ("lifetime,l", value<int>(), "The lifetime of the interest in milliseconds. (Default 1000ms)")
       ("run-time,t", value<int>(), "Runtime of the Dashplayer in Seconds. If not specified it is unlimited.")
-      ("request-rate,r", value<double>()->required (), "Request Rate in kbits assuming 4kb large data packets.");
+      ("request-rate,r", value<double>()->required (), "Request Rate in kbits assuming 4kb large data packets.")
+      ("output-file, o", value<string>(), "Name of the dashplayer trace log file.");
 
   positional_options_description positionalOptions;
   variables_map vm;
@@ -318,8 +322,14 @@ int main(int argc, char** argv)
     runtime = vm["run-time"].as<int>();
   }
 
+  std::string outputfile("");
+  if(vm.count("output-file"))
+  {
+    outputfile = vm["output-file"].as<string>();
+  }
+
   // create new DashPlayer instance with given parameters
-  DashPlayer consumer(vm["name"].as<string>(),vm["adaptionlogic"].as<string>(), lifetime, runtime, vm["request-rate"].as<double>());
+  DashPlayer consumer(vm["name"].as<string>(),vm["adaptionlogic"].as<string>(), lifetime, runtime, vm["request-rate"].as<double>(),outputfile);
 
   try
   {

@@ -46,7 +46,7 @@ namespace player {
 class DashPlayer
 {
     public:
-        DashPlayer(string MPD, string adaptionlogic_name, int interest_lifetime, int run_time, double request_rate);
+        DashPlayer(string MPD, string adaptionlogic_name, int interest_lifetime, int run_time, double request_rate, std::string logFileName);
         virtual ~DashPlayer();
         void startStreaming();
 
