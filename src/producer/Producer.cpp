@@ -1,14 +1,16 @@
 #include "Producer.hpp"
 
 // public methods
-ndn::Producer::Producer(string prefix, string document_root, int data_size, int freshness_seconds)
+ndn::Producer::Producer(string prefix, string document_root, int data_size, int freshness_seconds, int thread_count)
 {
-    this->prefix = prefix;
-    this->document_root =  (document_root.back() == '/') ? document_root.erase(document_root.size()-1) : document_root;
-    this-> data_size = data_size;
-    this->freshness_seconds = freshness_seconds;
+  this->prefix = prefix;
+  this->document_root =  (document_root.back() == '/') ? document_root.erase(document_root.size()-1) : document_root;
+  this-> data_size = data_size;
+  this->freshness_seconds = freshness_seconds;
 
-    initThreading();
+  this->thread_count = thread_count;
+
+initThreading();
 }
 
 ndn::Producer::~Producer()
@@ -23,7 +25,7 @@ void ndn::Producer::initThreading()
   // create some work for service to prevent premature termination
   work = shared_ptr<boost::asio::io_service::work>(new boost::asio::io_service::work(ioService));
 
-  for(int i = 0; i < 4; i++) // use e.g 4 Threads
+  for(int i = 0; i < thread_count; i++)
   {
     // add thread to pool
     threadpool.create_thread(boost::bind(&boost::asio::io_service::run, &ioService));
@@ -70,9 +72,9 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
     interestName = interestName.getPrefix(-1); // remove seq-Nr
     //cout << "Info: seq-nr: " << seq_nr << endl;
 
-    fprintf(stderr, "interestName=%s\n",interestName.toUri ().c_str ());
-    fprintf(stderr, "prefix=%s\n",prefix.c_str ());
-    fprintf(stderr, "document_root=%s\n",document_root.c_str ());
+    //fprintf(stderr, "interestName=%s\n",interestName.toUri ().c_str ());
+    //fprintf(stderr, "prefix=%s\n",prefix.c_str ());
+    //fprintf(stderr, "document_root=%s\n",document_root.c_str ());
 
     std::string fname = interestName.toUri ();
     fname = fname.substr (prefix.length ());
@@ -131,7 +133,7 @@ void ndn::Producer::onInterest(const InterestFilter& filter, const Interest& int
 
 void ndn::Producer::satisfyInterest(const Interest& interest)
 {
-  cout << "Received Interest: " << interest << endl;
+  //cout << "Received Interest: " << interest << endl;
 
   // Create new name, based on Interest's name
   Name dataName(interest.getName());
@@ -183,7 +185,8 @@ int main(int argc, char** argv)
       ("prefix,p", value<string>()->required (), "Prefix the Producer listens too. (Required)")
       ("document-root,b", value<string>()->required (), "The directory open to requests (Interests). (Required)")
       ("data-size,s", value<int>()->required (), "The size of the datapacket in bytes. (Required)")
-      ("freshness-time,f", value<int>(), "Freshness time of the content in seconds. (Default 5min)");
+      ("freshness-time,f", value<int>(), "Freshness time of the content in seconds. (Default 5min)")
+      ("threads, t", value<int>(), "Number of threads fullfulling requests (default 2)");
 
   positional_options_description positionalOptions;
   variables_map vm;
@@ -235,11 +238,17 @@ int main(int argc, char** argv)
   }
   cout << "document-root initialized with: " << vm["document-root"].as<string>() << endl;
 
+  int thread_count = 2;
+  if(vm.count ("threads"))
+  {
+    thread_count = vm["threads"].as<int>();
+  }
+
   // create new Producer instance with given parameters
   ndn::Producer producer(vm["prefix"].as<string>(),
                          vm["document-root"].as<string>(),
                          vm["data-size"].as<int>(),
-                         freshness_time);
+                         freshness_time,thread_count);
 
   try
   {

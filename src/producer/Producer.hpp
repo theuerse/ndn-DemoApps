@@ -30,7 +30,7 @@ namespace ndn {
 class Producer : noncopyable
 {
     public:
-        Producer(string prefix, string document_root, int data_size, int freshness_seconds);
+        Producer(string prefix, string document_root, int data_size, int freshness_seconds, int thread_count);
         void run();
         virtual ~Producer();
     protected:
@@ -58,6 +58,7 @@ class Producer : noncopyable
         boost::asio::io_service ioService;
         boost::thread_group threadpool;
         shared_ptr<boost::asio::io_service::work> work;
+        int thread_count;
 
 };
 }   // end namespace ndn
