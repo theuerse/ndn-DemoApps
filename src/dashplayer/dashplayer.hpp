@@ -87,6 +87,7 @@ class DashPlayer
         boost::shared_ptr<AdaptationLogic> alogic;
         int max_buffered_seconds;
 
+        unsigned int totalConsumedSegments;
         bool hasDownloadedAllSegments;
 
         ofstream logFile;

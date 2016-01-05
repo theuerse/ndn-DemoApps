@@ -19,6 +19,7 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
 
     downloader = boost::shared_ptr<FileDownloader>(new FileDownloader(this->interest_lifetime ));
 
+    totalConsumedSegments = 0;
     hasDownloadedAllSegments = false;
     isStalling=false;
 
@@ -44,7 +45,20 @@ DashPlayer::DashPlayer(std::string MPD, string adaptionlogic_name, int interest_
 
 DashPlayer::~DashPlayer()
 {
+  boost::posix_time::ptime now = boost::posix_time::second_clock::local_time();
+  for(; totalConsumedSegments < alogic->getTotalSegments (); totalConsumedSegments++)
+  {
+    logFile << boost::posix_time::to_simple_string (now)  << "\t"
+            << "PI_" << myId  << "\t"
+            << totalConsumedSegments  << "\t"
+            << -1  << "\t"
+            << 0 << "\t"
+            << 0 << "\t"
+            << 0 << "\t"
+            << "\n";
+  }
   logFile.close ();
+  fprintf(stderr, "Player Finished\n");
 }
 
 void DashPlayer::startStreaming ()
@@ -52,6 +66,7 @@ void DashPlayer::startStreaming ()
   //1fetch MPD and parse MPD
   std::string mpd_path("/tmp/video.mpd");
 
+  fprintf(stderr, "Fetching MPD: %s\n", mpd_url.c_str ());
   FileDownloader::FileStruct fstruct = downloader->getFile (mpd_url, requestRate);
   shared_ptr<itec::Buffer> mpd_data = fstruct.buffer;
   lastDWRate = fstruct.dwrate;
@@ -91,8 +106,6 @@ void DashPlayer::startStreaming ()
   //wait until threads finished
   downloadThread.join ();
   playbackThread.join ();
-
-  exit(0);
 }
 
 void DashPlayer::scheduleDownloadNextSegment ()
@@ -151,6 +164,7 @@ void DashPlayer::schedulePlayback ()
         stallDuration = boost::posix_time::time_duration(0,0,0,0);
 
       logSegmentConsume(entry,stallDuration);
+      totalConsumedSegments++;
       boost::this_thread::sleep(boost::posix_time::milliseconds(entry.segmentDuration*1000)); //consume the segment
     }
     else
@@ -186,6 +200,7 @@ void DashPlayer::schedulePlayback ()
   while((entry = mbuffer->consumeFromBuffer ()).segmentDuration > 0.0)
   {
     logSegmentConsume(entry,stallDuration);
+    totalConsumedSegments++;
   }
 
 }
@@ -477,5 +492,5 @@ void DashPlayer::stopPlayer ()
 
 double DashPlayer::GetLastDownloadBitRate()
 {
-  return lastDWRate; //TODO
+  return lastDWRate;
 }
