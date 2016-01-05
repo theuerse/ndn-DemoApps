@@ -28,6 +28,7 @@ bool MultimediaBuffer::addToBuffer(unsigned int segmentNumber, const dash::mpd::
   duration /= (double) usedRepresentation->GetSegmentList()->GetTimescale ();
 
   // Check if segment has depIds
+  mtx.lock ();
   if(usedRepresentation->GetDependencyId ().size() > 0)
   {
     // if so find the correct map
@@ -37,7 +38,7 @@ bool MultimediaBuffer::addToBuffer(unsigned int segmentNumber, const dash::mpd::
 
     BufferRepresentationEntryMap map = it->second;
 
-    mtx.lock ();
+
     for(std::vector<std::string>::const_iterator k = usedRepresentation->GetDependencyId ().begin ();
         k !=  usedRepresentation->GetDependencyId ().end (); k++)
     {
