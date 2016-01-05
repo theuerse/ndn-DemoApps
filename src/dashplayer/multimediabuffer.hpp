@@ -41,6 +41,8 @@ public:
 
   MultimediaBuffer(unsigned int maxBufferedSeconds);
 
+  ~MultimediaBuffer();
+
   bool addToBuffer(unsigned int segmentNumber, const dash::mpd::IRepresentation* usedRepresentation);
   bool enoughSpaceInBuffer(unsigned int segmentNumber, const dash::mpd::IRepresentation* usedRepresentation);
   BufferRepresentationEntry consumeFromBuffer();

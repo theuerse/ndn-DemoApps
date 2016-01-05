@@ -11,6 +11,10 @@ MultimediaBuffer::MultimediaBuffer(unsigned int maxBufferedSeconds)
   toConsumeSegmentNumber = 0;
 }
 
+MultimediaBuffer::~MultimediaBuffer()
+{
+}
+
 bool MultimediaBuffer::addToBuffer(unsigned int segmentNumber, const dash::mpd::IRepresentation* usedRepresentation)
 {
   //check if we receive a segment with a too large number
@@ -41,6 +45,7 @@ bool MultimediaBuffer::addToBuffer(unsigned int segmentNumber, const dash::mpd::
       if(map.find ((*k)) == map.end ())
       {
         //fprintf(stderr, "Could not find '%s' in map\n", (*k).c_str());
+        mtx.unlock ();
         return false;
       }
     }
@@ -49,7 +54,10 @@ bool MultimediaBuffer::addToBuffer(unsigned int segmentNumber, const dash::mpd::
   {
     //check if segment with layer == 0 fits in buffer
     if(isFull(usedRepresentation->GetId (),duration))
+    {
+      mtx.unlock ();
       return false;
+    }
   }
 
   // Add segment to buffer
