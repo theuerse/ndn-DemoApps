@@ -62,7 +62,7 @@ void FileDownloader::sendNextInterest(boost::asio::deadline_timer* timer)
 
   if(allChunksReceived ())// all chunks / file has been downloaded
   {
-    //TODO Cleanup;
+    m_face.shutdown();
     onFileReceived();
     return;
   }
@@ -70,7 +70,7 @@ void FileDownloader::sendNextInterest(boost::asio::deadline_timer* timer)
   // check if caller cancelled
   if(this->state == process_state::cancelled)
   {
-    m_face.shutdown(); // dangerous?
+    m_face.shutdown();
     return;
   }
 
