@@ -34,7 +34,10 @@ bool MultimediaBuffer::addToBuffer(unsigned int segmentNumber, const dash::mpd::
     // if so find the correct map
     MBuffer::iterator it = buff.find (segmentNumber);
     if(it == buff.end ())
+    {
+      mtx.unlock();
       return false;
+    }
 
     BufferRepresentationEntryMap map = it->second;
 
