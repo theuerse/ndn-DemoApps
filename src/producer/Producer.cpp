@@ -99,7 +99,7 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
 
     if(seq_nr > chunk_count-1)
     {
-        cout << "file does not exists or request exceeds file bounds" << endl;
+        cout << "file " << file_path << " does not exist or request exceeds file bounds" << endl;
         result.success=false;
         return result;
     }
@@ -119,7 +119,7 @@ ndn::Producer::file_chunk_t ndn::Producer::getFileContent(const Interest& intere
     //cout << "done" << endl;
     result.success = true;
     result.buffer = shared_ptr<itec::Buffer>( new itec::Buffer(buffer, buffer_size));
-    //delete[] buffer;
+    delete[] buffer;
     result.final_block_id = chunk_count - 1;
     return result;
 }
