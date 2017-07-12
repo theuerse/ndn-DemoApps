@@ -7,7 +7,7 @@ Demo Applications for Named Data Networking
 * libdash 2.2 and up (https://github.com/bitmovin/libdash)
 
 ## Commandline-Parameters:
-### Producer
+### Dashproducer
 | Parameter|Shorthand| Meaning                                                         |
 |-----------|---------|-----------------------------------------------------------------|
 |prefix|p|Prefix the Producer listens to (Required)|
