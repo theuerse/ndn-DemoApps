@@ -18,7 +18,7 @@ public:
 
   virtual std::string GetName() const
   {
-    return "player::SVCRateBasedAdaptationLogic";
+    return "rate";
   }
 
   static boost::shared_ptr<AdaptationLogic> Create(DashPlayer* mPlayer)

@@ -21,7 +21,7 @@ public:
 
   virtual std::string GetName() const
   {
-    return "player::SVCBufferAdaptationLogic";
+    return "buffer";
   }
 
   static boost::shared_ptr<AdaptationLogic> Create(DashPlayer* mPlayer)
