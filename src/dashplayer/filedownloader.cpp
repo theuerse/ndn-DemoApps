@@ -99,6 +99,7 @@ void FileDownloader::expressInterest(int seq_nr)
 
   m_face.expressInterest(interest,
                          bind(&FileDownloader::onData, this,  _1, _2),
+			 bind(&FileDownloader::onNack, this, _1, _2),
                          bind(&FileDownloader::onTimeout, this, _1));
 
   //cout << "Expressing interest #" << seq_nr << " " << interest << endl;
@@ -160,6 +161,12 @@ void FileDownloader::onTimeout(const Interest& interest)
   // get sequence number
   int seq_nr = interest.getName().at(-1).toSequenceNumber();
   buffer[seq_nr].state = chunk_state::unavailable; // reset state to pending -> queue for re-request
+}
+
+// 'react' on NACK
+void FileDownloader::onNack(const Interest& interest, const ndn::lp::Nack& nack){
+	std::cout << "received Nack with reason " << nack.getReason() 
+		<< " for interest " << interest << std::endl;
 }
 
 // cancel downloading, returned file will be empty

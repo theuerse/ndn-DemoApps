@@ -46,6 +46,7 @@ protected:
 
   void onData(const Interest& interest, const Data& data);
   void onTimeout(const Interest& interest);
+  void onNack(const Interest& interest, const ndn::lp::Nack& nack);
   void onFileReceived();
   void sendNextInterest(boost::asio::deadline_timer *timer);
   void expressInterest(int seq_nr);
